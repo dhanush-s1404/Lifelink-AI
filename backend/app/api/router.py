@@ -4,19 +4,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.auth.routes import router as auth_router
 from app.config.settings import settings
+from app.users.routes import router as users_router
 
 api_router = APIRouter(prefix=settings.api_v1_prefix)
 
-# Domain routers are mounted in their respective milestones:
-#   from app.auth import router as auth_router
-#   api_router.include_router(auth_router)
-
-
-def include_domain_routers(router: APIRouter) -> APIRouter:
-    """Mount domain routers onto the versioned router."""
-    # (deferred to later milestones)
-    return router
+api_router.include_router(auth_router)
+api_router.include_router(users_router)
 
 
 @api_router.get("/ping", tags=["system"])
