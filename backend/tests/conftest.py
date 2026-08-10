@@ -70,6 +70,16 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+class CapturingTransport:
+    """In-memory email transport that records messages for assertions."""
+
+    def __init__(self) -> None:
+        self.sent: list[dict] = []
+
+    async def send(self, *, to: str, subject: str, text: str, html: str | None = None) -> None:
+        self.sent.append({"to": to, "subject": subject, "text": text})
+
+
 @pytest_asyncio.fixture
 async def client(db_engine) -> AsyncGenerator[AsyncClient, None]:
     factory = async_sessionmaker(bind=db_engine, expire_on_commit=False)
@@ -84,11 +94,15 @@ async def client(db_engine) -> AsyncGenerator[AsyncClient, None]:
                 raise
 
     from app.database import get_session
+    from app.notifications.email import get_email_transport
 
     app.dependency_overrides[get_session] = override_get_session
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    transport = CapturingTransport()
+    app.dependency_overrides[get_email_transport] = lambda: transport
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        ac.captured_emails = transport.sent
         yield ac
 
     app.dependency_overrides.clear()

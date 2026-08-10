@@ -8,11 +8,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import timedelta
+from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.models import RefreshToken, UserSession
+from app.auth.models import (
+    EmailVerificationToken,
+    PasswordResetToken,
+    RefreshToken,
+    UserSession,
+)
 from app.auth.password import hash_password, verify_password
 from app.auth.schemas import AuthSuccess, TokenPair
 from app.config.settings import settings
@@ -23,14 +29,53 @@ from app.core.security import (
     hash_token,
     utc_now,
 )
+from app.notifications.email import EmailTransport, get_email_transport
 from app.users.models import User
 from app.users.repository import UserRepository
 
 
+class AuthNotifier:
+    """Sends auth-related emails through a transport."""
+
+    def __init__(self, transport: EmailTransport) -> None:
+        self._transport = transport
+
+    async def send_password_reset(self, *, to: str, full_name: str | None, token: str) -> None:
+        await self._transport.send(
+            to=to,
+            subject="LifeLink AI — Reset your password",
+            text=(
+                f"Hi {full_name or 'there'},\n\n"
+                "We received a request to reset your LifeLink AI password.\n"
+                f"Your reset token is: {token}\n\n"
+                "This token expires in 30 minutes. If you did not request this, "
+                "you can safely ignore this email.\n\n— LifeLink AI"
+            ),
+        )
+
+    async def send_email_verification(self, *, to: str, full_name: str | None, token: str) -> None:
+        await self._transport.send(
+            to=to,
+            subject="LifeLink AI — Verify your email",
+            text=(
+                f"Hi {full_name or 'there'},\n\n"
+                "Please verify your email address to finish setting up your account.\n"
+                f"Your verification token is: {token}\n\n"
+                "This token expires in 24 hours.\n\n— LifeLink AI"
+            ),
+        )
+
+
 class AuthService:
-    def __init__(self, session: AsyncSession, users: UserRepository) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        users: UserRepository,
+        notifier: AuthNotifier | None = None,
+    ) -> None:
         self._session = session
         self._users = users
+        self._notifier = notifier or AuthNotifier(get_email_transport())
 
     async def register(
         self,
@@ -100,6 +145,90 @@ class AuthService:
 
     async def revoke_session(self, session_id: uuid.UUID) -> None:
         await self._revoke_session(session_id)
+
+    async def request_password_reset(self, *, email: str) -> bool:
+        """Issue a password reset token and email it.
+
+        Returns True if a user exists (the caller must NOT reveal this to
+        clients; the endpoint always returns the same generic response).
+        """
+        user = await self._users.get_by_email(email)
+        if user is None or not user.is_active:
+            return False
+
+        raw = generate_secret_token()
+        record = PasswordResetToken(
+            user_id=user.id,
+            token_hash=hash_token(raw),
+            expires_at=utc_now() + timedelta(minutes=30),
+        )
+        self._session.add(record)
+        await self._session.flush()
+
+        await self._notifier.send_password_reset(to=user.email, full_name=user.full_name, token=raw)
+        return True
+
+    async def confirm_password_reset(self, *, token: str, new_password: str) -> None:
+        record = await self._find_token(PasswordResetToken, token)
+        if record is None or record.used_at is not None or record.expires_at <= utc_now():
+            raise UnauthorizedError("Reset token is invalid or expired", code="INVALID_RESET_TOKEN")
+
+        user = await self._users.get_by_id(record.user_id)
+        if user is None or not user.is_active:
+            raise UnauthorizedError("Account unavailable", code="ACCOUNT_DISABLED")
+
+        record.used_at = utc_now()
+        user.password_hash = hash_password(new_password)
+        await self._revoke_all_sessions(user.id)
+        await self._session.flush()
+
+    async def request_email_verification(self, *, user: User) -> None:
+        if user.is_verified:
+            return
+        raw = generate_secret_token()
+        record = EmailVerificationToken(
+            user_id=user.id,
+            email=user.email,
+            token_hash=hash_token(raw),
+            expires_at=utc_now() + timedelta(hours=24),
+        )
+        self._session.add(record)
+        await self._session.flush()
+
+        await self._notifier.send_email_verification(
+            to=user.email, full_name=user.full_name, token=raw
+        )
+
+    async def confirm_email_verification(self, *, token: str) -> None:
+        record = await self._find_token(EmailVerificationToken, token)
+        if record is None or record.used_at is not None or record.expires_at <= utc_now():
+            raise UnauthorizedError(
+                "Verification token is invalid or expired", code="INVALID_VERIFICATION_TOKEN"
+            )
+
+        user = await self._users.get_by_id(record.user_id)
+        if user is None:
+            raise UnauthorizedError("Account unavailable", code="ACCOUNT_DISABLED")
+
+        record.used_at = utc_now()
+        user.is_verified = True
+        await self._session.flush()
+
+    async def _find_token(
+        self, model: type[PasswordResetToken] | type[EmailVerificationToken], raw: str
+    ) -> PasswordResetToken | EmailVerificationToken | None:
+        stmt = select(model).where(model.token_hash == hash_token(raw))
+        result = (await self._session.execute(stmt)).scalar_one_or_none()
+        if result is None:
+            return None
+        return cast(PasswordResetToken | EmailVerificationToken, result)
+
+    async def _revoke_all_sessions(self, user_id: uuid.UUID) -> None:
+        await self._session.execute(
+            update(UserSession)
+            .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
+            .values(revoked_at=utc_now())
+        )
 
     # ------------------------------------------------------------------ utils
 

@@ -55,3 +55,20 @@ class SessionOut(BaseModel):
     last_seen_at: datetime | None
     created_at: datetime
     is_current: bool
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(min_length=16, max_length=512)
+    new_password: str = Field(min_length=8, max_length=200)
+
+
+class EmailVerificationRequest(BaseModel):
+    pass
+
+
+class EmailVerificationConfirm(BaseModel):
+    token: str = Field(min_length=16, max_length=512)

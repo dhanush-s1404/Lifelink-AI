@@ -6,11 +6,18 @@ autogenerate and other tooling can discover the full schema.
 
 from __future__ import annotations
 
-from app.auth.models import RefreshToken, UserSession
+from app.auth.models import (
+    EmailVerificationToken,
+    PasswordResetToken,
+    RefreshToken,
+    UserSession,
+)
 from app.users.models import MFASettings, User
 
 __all__ = [
+    "EmailVerificationToken",
     "MFASettings",
+    "PasswordResetToken",
     "RefreshToken",
     "User",
     "UserSession",

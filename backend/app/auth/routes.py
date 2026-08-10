@@ -9,13 +9,18 @@ from app.api.deps import get_session
 from app.auth.deps import get_current_user
 from app.auth.schemas import (
     AuthSuccess,
+    EmailVerificationConfirm,
+    EmailVerificationRequest,
     LoginRequest,
     LogoutRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     RefreshRequest,
     RegisterRequest,
     TokenPair,
 )
-from app.auth.service import AuthService
+from app.auth.service import AuthNotifier, AuthService
+from app.notifications.email import EmailTransport, get_email_transport
 from app.users.models import User
 from app.users.repository import UserRepository
 
@@ -29,13 +34,18 @@ def _client_context(request: Request) -> dict:
     }
 
 
+def _service(session: AsyncSession, transport: EmailTransport) -> AuthService:
+    return AuthService(session, UserRepository(session), AuthNotifier(transport))
+
+
 @router.post("/register", response_model=AuthSuccess, status_code=201)
 async def register(
     body: RegisterRequest,
     request: Request,
     session: AsyncSession = Depends(get_session),
+    transport: EmailTransport = Depends(get_email_transport),
 ) -> AuthSuccess:
-    service = AuthService(session, UserRepository(session))
+    service = _service(session, transport)
     return await service.register(
         email=body.email,
         password=body.password,
@@ -74,6 +84,51 @@ async def logout(
 ) -> None:
     service = AuthService(session, UserRepository(session))
     await service.logout(body.refresh_token)
+
+
+@router.post("/password-reset/request", status_code=202)
+async def request_password_reset(
+    body: PasswordResetRequest,
+    session: AsyncSession = Depends(get_session),
+    transport: EmailTransport = Depends(get_email_transport),
+) -> dict:
+    """Request a password reset.
+
+    Always returns 202 regardless of whether the email exists (anti-enumeration).
+    """
+    service = _service(session, transport)
+    await service.request_password_reset(email=body.email)
+    return {"status": "request_received"}
+
+
+@router.post("/password-reset/confirm", status_code=204)
+async def confirm_password_reset(
+    body: PasswordResetConfirm,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    service = AuthService(session, UserRepository(session))
+    await service.confirm_password_reset(token=body.token, new_password=body.new_password)
+
+
+@router.post("/verify-email/request", status_code=202)
+async def request_email_verification(
+    body: EmailVerificationRequest,
+    session: AsyncSession = Depends(get_session),
+    transport: EmailTransport = Depends(get_email_transport),
+    user: User = Depends(get_current_user),
+) -> dict:
+    service = _service(session, transport)
+    await service.request_email_verification(user=user)
+    return {"status": "verification_sent"}
+
+
+@router.post("/verify-email/confirm", status_code=204)
+async def confirm_email_verification(
+    body: EmailVerificationConfirm,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    service = AuthService(session, UserRepository(session))
+    await service.confirm_email_verification(token=body.token)
 
 
 @router.get("/sessions")
