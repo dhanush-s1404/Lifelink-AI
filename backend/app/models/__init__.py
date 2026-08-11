@@ -13,14 +13,20 @@ from app.auth.models import (
     UserSession,
 )
 from app.users.models import MFASettings, User
+from app.vault.models import Category, ItemType, ItemVersion, Vault, VaultItem
 
 __all__ = [
+    "Category",
     "EmailVerificationToken",
+    "ItemType",
+    "ItemVersion",
     "MFASettings",
     "PasswordResetToken",
     "RefreshToken",
     "User",
     "UserSession",
+    "Vault",
+    "VaultItem",
     "import_all_models",
 ]
 

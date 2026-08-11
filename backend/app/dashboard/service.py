@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import uuid
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dashboard.schemas import DashboardSummary
+from app.vault.models import Vault, VaultItem
 
 
 class DashboardService:
@@ -18,11 +20,23 @@ class DashboardService:
         self._session = session
 
     async def summarize(self, user_id: uuid.UUID) -> DashboardSummary:
-        # Counts are wired up as the respective domains land:
-        #   vaults, items, trusted_contacts, emergency, notifications.
+        vaults = (
+            await self._session.execute(
+                select(func.count()).select_from(Vault).where(Vault.owner_id == user_id)
+            )
+        ).scalar_one()
+        items = (
+            await self._session.execute(
+                select(func.count())
+                .select_from(VaultItem)
+                .join(Vault, Vault.id == VaultItem.vault_id)
+                .where(Vault.owner_id == user_id, VaultItem.is_archived.is_(False))
+            )
+        ).scalar_one()
+
         return DashboardSummary(
-            vaults_count=0,
-            items_count=0,
+            vaults_count=vaults,
+            items_count=items,
             trusted_contacts_count=0,
             pending_emergencies_count=0,
             unread_notifications_count=0,

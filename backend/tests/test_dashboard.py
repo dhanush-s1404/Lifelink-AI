@@ -31,3 +31,28 @@ async def test_dashboard_summary_returns_shape(client) -> None:
     assert body["trusted_contacts_count"] == 0
     assert body["pending_emergencies_count"] == 0
     assert "recent_activity" in body
+
+
+async def test_dashboard_counts_vaults_and_items(client) -> None:
+    access = await register_and_login(client, email="dash2@example.com")
+    headers = {"Authorization": f"Bearer {access}"}
+
+    vault = await client.post(
+        "/api/v1/vaults", json={"name": "Vault"}, headers=headers
+    )
+    assert vault.status_code == 201
+    vault_id = vault.json()["id"]
+
+    for title in ("Policy", "Note"):
+        resp = await client.post(
+            f"/api/v1/vaults/{vault_id}/items",
+            json={"item_type": "note", "title": title, "content": {"v": title}},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+
+    resp = await client.get("/api/v1/dashboard/summary", headers=headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["vaults_count"] == 1
+    assert body["items_count"] == 2

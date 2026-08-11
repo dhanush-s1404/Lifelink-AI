@@ -22,6 +22,7 @@ def create_engine() -> AsyncEngine:
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,
+        execution_options={"eager_defaults": True},
     )
 
 

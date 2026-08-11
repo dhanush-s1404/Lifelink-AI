@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
 
+    # Vault encryption (KMS-backed in production; never commit real keys)
+    vault_master_key: str = Field(default="dev_vault_master_key_change_me", min_length=16)
+
     # MinIO / object storage
     minio_endpoint: str = "localhost:9000"
     minio_root_user: str = "minioadmin"

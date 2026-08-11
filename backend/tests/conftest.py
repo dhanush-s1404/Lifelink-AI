@@ -58,7 +58,9 @@ async def test_schema(event_loop) -> None:
 @pytest_asyncio.fixture
 async def db_engine(test_schema) -> AsyncGenerator:
     """A per-test engine bound to the current test's event loop."""
-    engine = create_async_engine(TEST_DB_URL, pool_pre_ping=True)
+    engine = create_async_engine(
+        TEST_DB_URL, pool_pre_ping=True, execution_options={"eager_defaults": True}
+    )
     yield engine
     await engine.dispose()
 
