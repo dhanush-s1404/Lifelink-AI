@@ -12,6 +12,7 @@ from app.auth.models import (
     RefreshToken,
     UserSession,
 )
+from app.emergency.models import Emergency, EmergencyStatus
 from app.trusted_contacts.models import ContactStatus, TrustedContact
 from app.users.models import MFASettings, User
 from app.vault.models import Category, ItemType, ItemVersion, Vault, VaultItem
@@ -20,6 +21,8 @@ __all__ = [
     "Category",
     "ContactStatus",
     "EmailVerificationToken",
+    "Emergency",
+    "EmergencyStatus",
     "ItemType",
     "ItemVersion",
     "MFASettings",

@@ -16,18 +16,18 @@ incapacitation, or other emergency — and controls exactly who can see what, an
 Development in progress — milestone-driven build.
 
 - [x] **M1** — Project Foundation
-- [ ] **M2** — Backend Foundation
-- [ ] **M3** — Database & Migrations
-- [ ] **M4** — Authentication
-- [ ] **M5** — User Management
-- [ ] **M6** — Frontend Foundation
-- [ ] **M7** — Dashboard
-- [ ] **M8** — Vault
-- [ ] **M9** — Vault Items
+- [x] **M2** — Backend Foundation
+- [x] **M3** — Database & Migrations
+- [x] **M4** — Authentication
+- [x] **M5** — User Management
+- [x] **M6** — Frontend Foundation
+- [x] **M7** — Dashboard
+- [x] **M8** — Vault
+- [x] **M9** — Vault Items
 - [ ] **M10** — Document Storage
-- [ ] **M11** — Trusted Contacts
+- [x] **M11** — Trusted Contacts
 - [ ] **M12** — Access Control
-- [ ] **M13** — Emergency Workflow
+- [x] **M13** — Emergency Workflow
 - [ ] **M14** — Notifications
 - [ ] **M15** — Audit System
 - [ ] **M16** — AI Foundation
@@ -61,12 +61,14 @@ Development in progress — milestone-driven build.
 ## Product Highlights
 
 - **Secure digital vault** for identity, insurance, financial, medical, legal, and property data
-- **Trusted contacts & beneficiaries** with explicit, scoped access
-- **Emergency workflow** — verified requests release _only_ authorized information, time-limited
-- **Granular permissions** — least privilege, ownership checks
-- **AI assistant** that searches only what the caller is authorized to see
-- **Full audit trail** for every security-sensitive action
-- **Admin panel** that never sees decrypted user vault content
+- **AES-256-GCM encryption at rest** — vault content is encrypted before it touches the database; only the owner can decrypt it
+- **Trusted contacts & beneficiaries** with explicit, scoped access and **mutual consent** (owner invites, contact accepts)
+- **Emergency workflow** — a trusted contact raises an emergency; after a configurable grace period with no owner response, it escalates and releases read access to the vault to that contact only
+- **Granular permissions** — least privilege, ownership checks, per-contact emergency/access toggles
+- **Version history** — every vault item edit creates an immutable snapshot
+- **AI assistant** that searches only what the caller is authorized to see *(planned)*
+- **Full audit trail** for every security-sensitive action *(planned)*
+- **Admin panel** that never sees decrypted user vault content *(planned)*
 
 ## Repo Layout
 
@@ -94,6 +96,22 @@ docker compose up --build
 - MinIO console: http://localhost:9001
 
 See [docs/deployment/docker.md](docs/deployment/docker.md) for details.
+
+## API Surface (implemented)
+
+All endpoints live under `/api/v1` and require a `Bearer` access token unless noted.
+
+| Area | Endpoints |
+| ---- | --------- |
+| Auth | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/password-reset/request\|confirm`, `/auth/verify-email/request\|confirm`, `GET /auth/sessions` |
+| Users | `GET/PATCH /users/me`, `POST /users/me/password` |
+| Vaults | `GET/POST /vaults`, `GET/PATCH/DELETE /vaults/{id}`, `GET/POST /vaults/{id}/categories`, `GET/POST /vaults/{id}/items`, `GET/PATCH/DELETE /vaults/{id}/items/{item_id}`, `GET .../items/{item_id}/versions` |
+| Contacts | `GET/POST /contacts`, `GET /contacts/incoming`, `POST /contacts/{id}/accept\|decline`, `PATCH/DELETE /contacts/{id}` |
+| Emergency | `POST /emergencies`, `GET /emergencies`, `GET /emergencies/activated`, `GET /emergencies/{id}`, `POST /emergencies/{id}/confirm\|cancel`, `GET /emergencies/{id}/release` |
+| Dashboard | `GET /dashboard/summary` |
+| System | `GET /health`, `/ready`, `/live`, `/api/v1/ping` |
+
+Interactive docs: `http://localhost:8000/docs` (Swagger UI).
 
 ## Documentation
 

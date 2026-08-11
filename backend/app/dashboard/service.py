@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dashboard.schemas import DashboardSummary
+from app.emergency.models import Emergency, EmergencyStatus
 from app.trusted_contacts.models import ContactStatus, TrustedContact
 from app.vault.models import Vault, VaultItem
 
@@ -46,11 +47,22 @@ class DashboardService:
             )
         ).scalar_one()
 
+        pending_emergencies = (
+            await self._session.execute(
+                select(func.count())
+                .select_from(Emergency)
+                .where(
+                    Emergency.owner_id == user_id,
+                    Emergency.status == EmergencyStatus.PENDING,
+                )
+            )
+        ).scalar_one()
+
         return DashboardSummary(
             vaults_count=vaults,
             items_count=items,
             trusted_contacts_count=contacts,
-            pending_emergencies_count=0,
+            pending_emergencies_count=pending_emergencies,
             unread_notifications_count=0,
             recent_activity=[],
         )
