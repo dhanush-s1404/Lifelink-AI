@@ -43,26 +43,26 @@ Development in progress — milestone-driven build.
 
 ## Technology Stack
 
-| Layer         | Technology                                                          |
-| ------------- | ------------------------------------------------------------------- |
-| Frontend      | Next.js, React, TypeScript, Tailwind CSS, TanStack Query, Zod, RHF  |
-| Backend       | Python, FastAPI, Pydantic, SQLAlchemy 2.x, Alembic                  |
-| Database      | PostgreSQL                                                          |
-| Cache / Queue | Redis (Celery broker & result backend)                              |
-| Jobs          | Celery                                                              |
-| Storage       | S3-compatible object storage (MinIO for local dev)                  |
-| Auth          | JWT access + rotating refresh tokens, Argon2id, MFA-ready, RBAC     |
-| AI            | Provider abstraction, Gemini provider, embeddings / RAG             |
-| Infra         | Docker, Docker Compose, Nginx, GitHub Actions                       |
-| Testing       | Pytest, pytest-asyncio, Playwright, API integration tests           |
-| Quality       | Ruff, Black, MyPy, ESLint, Prettier                                 |
-| Observability | Structured logging, Prometheus, Grafana, OpenTelemetry-ready        |
+| Layer         | Technology                                                         |
+| ------------- | ------------------------------------------------------------------ |
+| Frontend      | Next.js, React, TypeScript, Tailwind CSS, TanStack Query, Zod, RHF |
+| Backend       | Python, FastAPI, Pydantic, SQLAlchemy 2.x, Alembic                 |
+| Database      | PostgreSQL                                                         |
+| Cache / Queue | Redis (Celery broker & result backend)                             |
+| Jobs          | Celery                                                             |
+| Storage       | S3-compatible object storage (MinIO for local dev)                 |
+| Auth          | JWT access + rotating refresh tokens, Argon2id, MFA-ready, RBAC    |
+| AI            | Provider abstraction, Gemini provider, embeddings / RAG            |
+| Infra         | Docker, Docker Compose, Nginx, GitHub Actions                      |
+| Testing       | Pytest, pytest-asyncio, Playwright, API integration tests          |
+| Quality       | Ruff, Black, MyPy, ESLint, Prettier                                |
+| Observability | Structured logging, Prometheus, Grafana, OpenTelemetry-ready       |
 
 ## Product Highlights
 
 - **Secure digital vault** for identity, insurance, financial, medical, legal, and property data
 - **Trusted contacts & beneficiaries** with explicit, scoped access
-- **Emergency workflow** — verified requests release *only* authorized information, time-limited
+- **Emergency workflow** — verified requests release _only_ authorized information, time-limited
 - **Granular permissions** — least privilege, ownership checks
 - **AI assistant** that searches only what the caller is authorized to see
 - **Full audit trail** for every security-sensitive action
@@ -107,3 +107,5 @@ See [docs/deployment/docker.md](docs/deployment/docker.md) for details.
 ## License
 
 Proprietary / all rights reserved.
+
+opencode -s ses_0144d5e0dffeOig6mNWBBuEm1N
