@@ -11,6 +11,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { DocumentSection } from "@/components/vault/DocumentSection";
 import { useToast } from "@/lib/toast";
 import {
   createItem,
@@ -166,9 +167,12 @@ function ItemRow({ vaultId, item }: { vaultId: string; item: { id: string; title
         </div>
       </div>
       {revealed && detail && (
-        <pre className="mb-3 overflow-x-auto rounded-lg bg-slate-50 p-3 font-mono text-xs text-slate-800">
-          {JSON.stringify(detail.content, null, 2)}
-        </pre>
+        <div className="mb-3 space-y-3">
+          <pre className="overflow-x-auto rounded-lg bg-slate-50 p-3 font-mono text-xs text-slate-800">
+            {JSON.stringify(detail.content, null, 2)}
+          </pre>
+          <DocumentSection vaultId={vaultId} itemId={item.id} />
+        </div>
       )}
     </li>
   );

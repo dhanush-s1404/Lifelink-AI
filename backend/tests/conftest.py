@@ -96,9 +96,13 @@ async def client(db_engine) -> AsyncGenerator[AsyncClient, None]:
                 raise
 
     from app.database import get_session
+    from app.documents.storage import InMemoryObjectStorage, get_object_storage
     from app.notifications.email import get_email_transport
 
     app.dependency_overrides[get_session] = override_get_session
+
+    storage = InMemoryObjectStorage()
+    app.dependency_overrides[get_object_storage] = lambda: storage
 
     transport = CapturingTransport()
     app.dependency_overrides[get_email_transport] = lambda: transport

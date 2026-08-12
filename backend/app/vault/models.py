@@ -99,6 +99,9 @@ class VaultItem(BaseModel):
     versions: Mapped[list[ItemVersion]] = relationship(
         back_populates="item", cascade="all, delete-orphan"
     )
+    documents: Mapped[list["Document"]] = relationship(
+        back_populates="vault_item", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("ix_vault_items_vault_id", "vault_id"),
