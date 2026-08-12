@@ -1,4 +1,4 @@
-"""Vault orchestration service with ownership checks and encryption."""
+"""Vault orchestration service with access control and encryption."""
 
 from __future__ import annotations
 
@@ -9,9 +9,10 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError
+from app.access_control.service import AccessControlService
+from app.core.exceptions import NotFoundError
 from app.vault.encryption import decrypt, encrypt
-from app.vault.models import ItemType, ItemVersion, Vault, VaultItem
+from app.vault.models import ItemType, ItemVersion, VaultItem
 from app.vault.repository import VaultRepository
 from app.vault.schemas import CategoryOut, ItemDetailOut, ItemOut, VaultOut
 
@@ -20,6 +21,7 @@ class VaultService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._repo = VaultRepository(session)
+        self._access = AccessControlService(session)
 
     # ------------------------------------------------------------------ vaults
 
@@ -30,16 +32,19 @@ class VaultService:
         return VaultOut.model_validate(vault)
 
     async def list_vaults(self, owner_id: uuid.UUID) -> list[VaultOut]:
-        return [VaultOut.model_validate(v) for v in await self._repo.list_vaults(owner_id)]
+        return [VaultOut.model_validate(v) for v in await self._access.list_owned_vaults(owner_id)]
+
+    async def list_shared_vaults(self, user_id: uuid.UUID) -> list[VaultOut]:
+        return [VaultOut.model_validate(v) for v in await self._access.list_shared_vaults(user_id)]
 
     async def get_vault(self, vault_id: uuid.UUID, user_id: uuid.UUID) -> VaultOut:
-        vault = await self._require_owned_vault(vault_id, user_id)
+        vault = await self._access.require_read_vault(vault_id=vault_id, user_id=user_id)
         return VaultOut.model_validate(vault)
 
     async def update_vault(
         self, vault_id: uuid.UUID, user_id: uuid.UUID, *, name: str | None, description: str | None
     ) -> VaultOut:
-        vault = await self._require_owned_vault(vault_id, user_id)
+        vault = await self._access.require_write_vault(vault_id=vault_id, user_id=user_id)
         if name is not None:
             vault.name = name
         if description is not None:
@@ -49,7 +54,7 @@ class VaultService:
         return VaultOut.model_validate(vault)
 
     async def delete_vault(self, vault_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        vault = await self._require_owned_vault(vault_id, user_id)
+        vault = await self._access.require_write_vault(vault_id=vault_id, user_id=user_id)
         await self._session.delete(vault)
         await self._session.flush()
 
@@ -58,12 +63,12 @@ class VaultService:
     async def create_category(
         self, vault_id: uuid.UUID, user_id: uuid.UUID, *, name: str
     ) -> CategoryOut:
-        await self._require_owned_vault(vault_id, user_id)
+        await self._access.require_write_vault(vault_id=vault_id, user_id=user_id)
         category = await self._repo.create_category(vault_id=vault_id, name=name)
         return CategoryOut.model_validate(category)
 
     async def list_categories(self, vault_id: uuid.UUID, user_id: uuid.UUID) -> list[CategoryOut]:
-        await self._require_owned_vault(vault_id, user_id)
+        await self._access.require_read_vault(vault_id=vault_id, user_id=user_id)
         return [CategoryOut.model_validate(c) for c in await self._repo.list_categories(vault_id)]
 
     # ------------------------------------------------------------------- items
@@ -79,7 +84,7 @@ class VaultService:
         category_id: uuid.UUID | None,
         masked_summary: str | None,
     ) -> ItemDetailOut:
-        vault = await self._require_owned_vault(vault_id, user_id)
+        vault = await self._access.require_write_vault(vault_id=vault_id, user_id=user_id)
         if category_id:
             category = await self._repo.get_category(category_id)
             if category is None or category.vault_id != vault.id:
@@ -107,7 +112,7 @@ class VaultService:
             )
         )
         await self._session.flush()
-        return await self._item_detail(item, user_id)
+        return await self._item_detail(item)
 
     async def list_items(
         self,
@@ -118,7 +123,7 @@ class VaultService:
         category_id: uuid.UUID | None = None,
         include_archived: bool = False,
     ) -> list[ItemOut]:
-        await self._require_owned_vault(vault_id, user_id)
+        await self._access.require_read_vault(vault_id=vault_id, user_id=user_id)
         items = await self._repo.list_items(
             vault_id=vault_id,
             item_type=item_type,
@@ -129,8 +134,8 @@ class VaultService:
         return [_item_out(item, versions.get(item.id, 1)) for item in items]
 
     async def get_item(self, item_id: uuid.UUID, user_id: uuid.UUID) -> ItemDetailOut:
-        item = await self._require_owned_item(item_id, user_id)
-        return await self._item_detail(item, user_id)
+        item = await self._access.require_read_item(item_id=item_id, user_id=user_id)
+        return await self._item_detail(item)
 
     async def update_item(
         self,
@@ -143,7 +148,7 @@ class VaultService:
         masked_summary: str | None,
         is_archived: bool | None,
     ) -> ItemDetailOut:
-        item = await self._require_owned_item(item_id, user_id)
+        item = await self._access.require_write_item(item_id=item_id, user_id=user_id)
 
         if category_id is not None:
             category = await self._repo.get_category(category_id)
@@ -179,15 +184,15 @@ class VaultService:
             )
         await self._session.flush()
         await self._session.refresh(item)
-        return await self._item_detail(item, user_id)
+        return await self._item_detail(item)
 
     async def delete_item(self, item_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        item = await self._require_owned_item(item_id, user_id)
+        item = await self._access.require_write_item(item_id=item_id, user_id=user_id)
         await self._session.delete(item)
         await self._session.flush()
 
     async def list_versions(self, item_id: uuid.UUID, user_id: uuid.UUID) -> list[dict]:
-        item = await self._require_owned_item(item_id, user_id)
+        item = await self._access.require_read_item(item_id=item_id, user_id=user_id)
         stmt = (
             select(ItemVersion)
             .where(ItemVersion.item_id == item.id)
@@ -206,24 +211,7 @@ class VaultService:
 
     # ------------------------------------------------------------------ helpers
 
-    async def _require_owned_vault(self, vault_id: uuid.UUID, user_id: uuid.UUID) -> Vault:
-        vault = await self._repo.get_vault(vault_id)
-        if vault is None:
-            raise NotFoundError("Vault not found", code="VAULT_NOT_FOUND")
-        if vault.owner_id != user_id:
-            raise ForbiddenError("You do not have access to this vault", code="VAULT_ACCESS_DENIED")
-        return vault
-
-    async def _require_owned_item(self, item_id: uuid.UUID, user_id: uuid.UUID) -> VaultItem:
-        item = await self._repo.get_item(item_id)
-        if item is None:
-            raise NotFoundError("Item not found", code="ITEM_NOT_FOUND")
-        vault = await self._repo.get_vault(item.vault_id)
-        if vault is None or vault.owner_id != user_id:
-            raise ForbiddenError("You do not have access to this item", code="ITEM_ACCESS_DENIED")
-        return item
-
-    async def _item_detail(self, item: VaultItem, user_id: uuid.UUID) -> ItemDetailOut:
+    async def _item_detail(self, item: VaultItem) -> ItemDetailOut:
         version = (
             await self._session.execute(
                 select(func.max(ItemVersion.version_number)).where(ItemVersion.item_id == item.id)

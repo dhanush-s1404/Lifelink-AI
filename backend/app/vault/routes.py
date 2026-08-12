@@ -52,6 +52,15 @@ async def create_vault(
     )
 
 
+@router.get("/shared", response_model=list[VaultOut])
+async def list_shared_vaults(
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> list[VaultOut]:
+    """Vaults the user may read via trusted-contact grants (cannot modify)."""
+    return await _service(session).list_shared_vaults(user.id)
+
+
 @router.get("/{vault_id}", response_model=VaultOut)
 async def get_vault(
     vault_id: uuid.UUID,

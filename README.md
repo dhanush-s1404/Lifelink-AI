@@ -26,7 +26,7 @@ Development in progress — milestone-driven build.
 - [x] **M9** — Vault Items
 - [x] **M10** — Document Storage
 - [x] **M11** — Trusted Contacts
-- [ ] **M12** — Access Control
+- [x] **M12** — Access Control
 - [x] **M13** — Emergency Workflow
 - [ ] **M14** — Notifications
 - [ ] **M15** — Audit System

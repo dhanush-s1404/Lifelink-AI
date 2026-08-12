@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import uuid
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Enum, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import BaseModel
+
+if TYPE_CHECKING:
+    from app.documents.models import Document
 
 
 class ItemType(StrEnum):
@@ -99,7 +103,7 @@ class VaultItem(BaseModel):
     versions: Mapped[list[ItemVersion]] = relationship(
         back_populates="item", cascade="all, delete-orphan"
     )
-    documents: Mapped[list["Document"]] = relationship(
+    documents: Mapped[list[Document]] = relationship(
         back_populates="vault_item", cascade="all, delete-orphan"
     )
 

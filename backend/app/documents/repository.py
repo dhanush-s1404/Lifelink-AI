@@ -42,7 +42,9 @@ class DocumentRepository:
     async def get(self, document_id: uuid.UUID) -> Document | None:
         return await self._session.get(Document, document_id)
 
-    async def get_for_item(self, document_id: uuid.UUID, vault_item_id: uuid.UUID) -> Document | None:
+    async def get_for_item(
+        self, document_id: uuid.UUID, vault_item_id: uuid.UUID
+    ) -> Document | None:
         stmt = select(Document).where(
             Document.id == document_id,
             Document.vault_item_id == vault_item_id,
