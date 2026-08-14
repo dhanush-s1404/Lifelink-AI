@@ -29,7 +29,7 @@ Development in progress — milestone-driven build.
 - [x] **M12** — Access Control
 - [x] **M13** — Emergency Workflow
 - [x] **M14** — Notifications
-- [ ] **M15** — Audit System
+- [x] **M15** — Audit System
 - [ ] **M16** — AI Foundation
 - [ ] **M17** — AI Assistant
 - [ ] **M18** — Search
@@ -39,7 +39,7 @@ Development in progress — milestone-driven build.
 - [ ] **M22** — Docker
 - [ ] **M23** — CI/CD
 - [ ] **M24** — Monitoring
-- **M25** — Production Hardening
+- [ ] **M25** — Production Hardening
 
 ## Technology Stack
 

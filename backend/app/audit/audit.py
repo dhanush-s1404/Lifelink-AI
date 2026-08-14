@@ -1,11 +1,11 @@
-import os
 from __future__ import annotations
 
 import json
+import os
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.core.logging import logger
 
@@ -35,7 +35,7 @@ _audit_lock = threading.Lock()
 
 def _now_utc() -> str:
     """Return the current UTC time as an ISO‑8601 string."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _trim_log() -> None:
@@ -64,7 +64,7 @@ def audit_action(
     resource_type: str,
     resource_id: str,
     outcome: str,
-    details: Optional[dict[str, Any]] = None,
+    details: dict[str, Any] | None = None,
 ) -> None:
     """Emit a single audit entry.
 
