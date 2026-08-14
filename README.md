@@ -28,7 +28,7 @@ Development in progress — milestone-driven build.
 - [x] **M11** — Trusted Contacts
 - [x] **M12** — Access Control
 - [x] **M13** — Emergency Workflow
-- [ ] **M14** — Notifications
+- [x] **M14** — Notifications
 - [ ] **M15** — Audit System
 - [ ] **M16** — AI Foundation
 - [ ] **M17** — AI Assistant
