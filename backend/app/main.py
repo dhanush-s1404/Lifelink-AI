@@ -19,6 +19,7 @@ from app.monitoring import (
     create_health_router,
     get_structured_logger,
     HealthCheckResult,
+    GracefulDegradationMiddleware,
 )
 
 # ------------------------------------------------------------------
@@ -86,6 +87,9 @@ app.add_middleware(correlation_id_middleware)
 
 # Metrics middleware (counters, histograms, error counts)
 app.add_middleware(metrics_middleware(tracer, meter))
+
+# Graceful degradation middleware (circuit breakers for external services)
+app.add_middleware(GracefulDegradationMiddleware)
 
 # CORS
 app.add_middleware(

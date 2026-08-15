@@ -1,3 +1,9 @@
+"""Audit logging for LifeLink AI backend.
+
+Provides structured audit logging with thread-safe file writing,
+log trimming, and convenient wrappers for common operations.
+"""
+
 from __future__ import annotations
 
 import json
@@ -9,21 +15,38 @@ from typing import Any
 from app.core.logging import logger
 
 # ----------------------------------------------------------------------
-# Configuration
+# Configuration (computed on first access, no module-level os import)
 # ----------------------------------------------------------------------
 
-#: Absolute path to the audit log file. Override via the ``AUDIT_LOG_PATH``
-#: environment variable or keep the default under the project directory.
+#: Default path to the audit log file (override via ``AUDIT_LOG_PATH`` env var).
+#: The actual path is resolved lazily by _ensure_audit_log_path().
 DEFAULT_AUDIT_LOG = Path(__file__).resolve().parent.parent.parent / "audit" / "audit.log"
+
+#: Global flag tracking whether the audit log path has been initialized.
+_audit_log_path_initialized = False
 
 
 def _get_audit_log_path() -> Path:
-    """Return the audit log path, respecting the ``AUDIT_LOG_PATH`` env var."""
-    import os
-    return Path(os.getenv("AUDIT_LOG_PATH", DEFAULT_AUDIT_LOG))
+    """Return the audit log path, respecting the ``AUDIT_LOG_PATH`` env var.
+
+    Import ``os`` inside the function to avoid module-level import issues
+    with Python 3.14's import system.
+    """
+    import os as _os
+
+    return Path(_os.getenv("AUDIT_LOG_PATH", str(DEFAULT_AUDIT_LOG)))
 
 
-AUDIT_LOG_PATH = _get_audit_log_path()
+def _ensure_audit_log_path() -> None:
+    """Initialize ``AUDIT_LOG_PATH`` from the env var if not yet done."""
+    global _audit_log_path_initialized, AUDIT_LOG_PATH
+    if not _audit_log_path_initialized:
+        AUDIT_LOG_PATH = _get_audit_log_path()
+        _audit_log_path_initialized = True
+
+
+#: Audit log path – initialized lazily by ``_ensure_audit_log_path()``.
+AUDIT_LOG_PATH = DEFAULT_AUDIT_LOG
 
 #: Maximum number of entries to keep in the log file. Older entries are
 #: truncated when the limit is exceeded.
@@ -44,6 +67,7 @@ def _now_utc() -> str:
 
 def _trim_log() -> None:
     """Remove oldest entries so that ``AUDIT_MAX_ENTRIES`` is never exceeded."""
+    _ensure_audit_log_path()
     if not AUDIT_LOG_PATH.exists():
         return
 
@@ -90,6 +114,7 @@ def audit_action(
         Optional free‑form dictionary with extra context (e.g. IP address,
         error code, item count).  *None* is equivalent to an empty dict.
     """
+    _ensure_audit_log_path()
     entry: dict[str, Any] = {
         "timestamp": _now_utc(),
         "actor": actor,

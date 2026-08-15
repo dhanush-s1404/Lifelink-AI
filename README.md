@@ -30,16 +30,16 @@ Development in progress — milestone-driven build.
 - [x] **M13** — Emergency Workflow
 - [x] **M14** — Notifications
 - [x] **M15** — Audit System
-- [ ] **M16** — AI Foundation
-- [ ] **M17** — AI Assistant
-- [ ] **M18** — Search
-- [ ] **M19** — Security Hardening
-- [ ] **M20** — Admin Panel
-- [ ] **M21** — Testing
-- [ ] **M22** — Docker
-- [ ] **M23** — CI/CD
-- [ ] **M24** — Monitoring
-- [ ] **M25** — Production Hardening
+- [x] **M16** — AI Foundation (embeddings + summarization)
+- [x] **M17** — AI Assistant chat interface
+- [x] **M18** — Vector search service
+- [x] **M19** — Security hardening (middleware, rate limiter, token validator, logger)
+- [x] **M20** — Admin panel routes
+- [x] **M21** — E2E test suite (3 test files)
+- [x] **M22** — Docker Compose configured
+- [x] **M23** — CI/CD pipeline (.github/workflows/ci.yml)
+- [x] **M24** — Monitoring (OpenTelemetry, metrics, health checks)
+- [x] **M25** — Production Hardening (circuit breakers, graceful degradation, error pages)
 
 ## Technology Stack
 

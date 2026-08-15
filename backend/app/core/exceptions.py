@@ -70,6 +70,19 @@ class RateLimitError(AppError):
     status_code = 429
 
 
+class CircuitOpenError(AppError):
+    """Raised when a circuit breaker is OPEN and the service is unavailable."""
+    code = "CIRCUIT_OPEN"
+    status_code = 503
+
+    def __init__(self, service_name: str):
+        super().__init__(
+            message=f"{service_name} service unavailable - circuit breaker open",
+            code=self.code,
+            status_code=self.status_code,
+        )
+
+
 def _error_body(request_id: str, code: str, message: str) -> dict[str, Any]:
     return {"error": {"code": code, "message": message, "request_id": request_id}}
 
@@ -135,6 +148,21 @@ def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
     )
 
 
+def _handle_circuit_open_error(request: Request, exc: CircuitOpenError) -> JSONResponse:
+    """Handle CircuitOpenError with a 503 response indicating service degradation."""
+    logger.warning(
+        "circuit_open_error",
+        code=exc.code,
+        service_name=exc.message,
+        path=request.url.path,
+        request_id=_request_id(request),
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=_error_body(_request_id(request), exc.code, exc.message),
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Attach all exception handlers to the FastAPI application.
 
@@ -146,4 +174,5 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(AppError, cast(handler_type, _handle_app_error))
     app.add_exception_handler(StarletteHTTPException, cast(handler_type, _handle_http_error))
     app.add_exception_handler(RequestValidationError, cast(handler_type, _handle_validation_error))
+    app.add_exception_handler(CircuitOpenError, cast(handler_type, _handle_circuit_open_error))
     app.add_exception_handler(Exception, cast(handler_type, _handle_unexpected))

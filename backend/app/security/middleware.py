@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -205,6 +205,109 @@ class TokenValidator(HTTPBearer):
 
 
 # ------------------------------------------------------------------
+# Circuit breaker for graceful degradation
+# ---------------------------------------------------------------
+
+
+class CircuitBreaker:
+    """Circuit breaker pattern for graceful degradation of external services.
+
+    States:
+        - CLOSED: normal operation, requests pass through
+        - OPEN: circuit tripped, requests are short-circuited (fallback returned)
+        - HALF_OPEN: testing if service recovered, limited requests allowed
+
+    Usage:
+        breaker = CircuitFailureThreshold(failure_threshold=5, recovery_timeout=30)
+        result = breaker.call(external_service_call)
+    """
+
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        recovery_timeout: float = 30.0,
+        fallback: Any = None,
+    ) -> None:
+        """Initialize circuit breaker.
+
+        Parameters
+        ----------
+        failure_threshold:
+            Number of consecutive failures before opening the circuit.
+        recovery_timeout:
+            Seconds to wait before transitioning to HALF_OPEN.
+        fallback:
+            Value or callable to return when circuit is OPEN.
+        """
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.fallback = fallback
+        self._failure_count = 0
+        self._last_failure_time: float | None = None
+        self._state: str = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
+        self._last_success_time: float | None = None
+
+    def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        """Execute a function through the circuit breaker.
+
+        Parameters
+        ----------
+        func:
+            The async function to execute.
+        *args:
+            Positional arguments for func.
+        **kwargs:
+            Keyword arguments for func.
+
+        Returns
+        -------
+        Any
+            Result of func if circuit closed, or fallback if open.
+        """
+        if self._state == "OPEN":
+            if self._last_failure_time is not None:
+                elapsed = time.time() - self._last_failure_time
+                if elapsed < self.recovery_timeout:
+                    # Circuit is open, return fallback immediately
+                    if callable(self.fallback):
+                        return self.fallback()
+                    return self.fallback
+                # Transition to HALF_OPEN
+                self._state = "HALF_OPEN"
+                self._failure_count = 0
+
+        if self._state == "HALF_OPEN":
+            # Only allow a single call through; if it succeeds, close the circuit
+            try:
+                result = func(*args, **kwargs)
+                self._state = "CLOSED"
+                self._failure_count = 0
+                self._last_success_time = time.time()
+                return result
+            except Exception:
+                # Back to OPEN
+                self._state = "OPEN"
+                self._failure_count = 1
+                self._last_failure_time = time.time()
+                if callable(self.fallback):
+                    return self.fallback()
+                return self.fallback
+
+        # CLOSED state: execute normally
+        try:
+            result = func(*args, **kwargs)
+            self._failure_count = 0
+            self._last_success_time = time.time()
+            return result
+        except Exception:
+            self._failure_count += 1
+            if self._failure_count >= self.failure_threshold:
+                self._state = "OPEN"
+                self._last_failure_time = time.time()
+            raise
+
+
+# ------------------------------------------------------------------
 # Security event logger
 # ---------------------------------------------------------------
 
@@ -300,3 +403,167 @@ class SecurityLogger:
                 "timestamp": datetime.utcnow().isoformat(),
             },
         )
+
+
+# ------------------------------------------------------------------
+# Graceful degradation middleware
+# ---------------------------------------------------------------
+
+
+class GracefulDegradationMiddleware(BaseHTTPMiddleware):
+    """Middleware that provides graceful degradation when external services fail.
+
+    Wraps request handling with circuit breakers for optional external dependencies
+    (AI services, search, notifications, etc.). When a circuit is OPEN, requests
+    receive a degraded but functional response instead of 500 errors.
+
+    Configuration is done via class attributes or instance configuration.
+    """
+
+    # Circuit breakers for different service categories
+    ai_circuit: CircuitBreaker | None = None
+    search_circuit: CircuitBreaker | None = None
+    notification_circuit: CircuitBreaker | None = None
+
+    # Fallback responses for when circuits are OPEN
+    ai_fallback_response: dict[str, Any] = {
+        "status": "degraded",
+        "message": "AI services temporarily unavailable",
+        "fallback": "rule-based response",
+    }
+    search_fallback_response: dict[str, Any] = {
+        "status": "degraded",
+        "message": "Search service temporarily unavailable",
+        "fallback": "basic search disabled",
+    }
+    notification_fallback_response: dict[str, Any] = {
+        "status": "degraded",
+        "message": "Notification service temporarily unavailable",
+        "fallback": "email queue enabled",
+    }
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        """Process request through circuit breakers.
+
+        For POST/PUT/DELETE requests to AI/embedding/search endpoints,
+        circuit breakers are checked. If OPEN, a degraded response is
+        returned immediately without calling the downstream service.
+        """
+
+        path = request.url.path
+        method = request.method
+
+        # Apply circuit breakers to AI-related endpoints
+        if path.startswith("/ai/") and method in ("POST", "PUT", "DELETE"):
+            # Initialize circuits if not set
+            if GracefulDegradationMiddleware.ai_circuit is None:
+                GracefulDegradationMiddleware.ai_circuit = CircuitBreaker(
+                    failure_threshold=3, recovery_timeout=15.0
+                )
+            if GracefulDegradationMiddleware.search_circuit is None:
+                GracefulDegradationMiddleware.search_circuit = CircuitBreaker(
+                    failure_threshold=3, recovery_timeout=15.0
+                )
+
+            # Wrap the downstream call with circuit breaker
+            original_call_next = call_next
+
+            async def circuit_breaker_next() -> Response:
+                # Determine which circuit to use based on path
+                if "/embed" in path or "/summarize" in path:
+                    circuit = GracefulDegradationMiddleware.ai_circuit
+                elif "/search" in path:
+                    circuit = GracefulDegradationMiddleware.search_circuit
+                else:
+                    circuit = GracefulDegradationMiddleware.ai_circuit
+
+                # Define the actual service call
+                async def _service_call():
+                    return await original_call_next(request)
+
+                try:
+                    return await circuit.call(_service_call)
+                except Exception:
+                    # Circuit breaker returned fallback or re-raised
+                    if GracefulDegradationMiddleware.ai_circuit:
+                        if "/embed" in path or "/summarize" in path:
+                            return Response(
+                                content=json.dumps(
+                                    GracefulDegradationMiddleware.ai_fallback_response
+                                ),
+                                status_code=200,
+                                media_type="application/json",
+                            )
+                        elif "/search" in path:
+                            return Response(
+                                content=json.dumps(
+                                    GracefulDegradationMiddleware.search_fallback_response
+                                ),
+                                status_code=200,
+                                media_type="application/json",
+                            )
+                    return Response(
+                        content=json.dumps(
+                            {"status": "error", "detail": "internal server error"}
+                        ),
+                        status_code=500,
+                        media_type="application/json",
+                    )
+
+            call_next = circuit_breaker_next
+
+        # Apply circuit breakers to notification-related endpoints
+        if "/notifications/" in path and method in ("POST", "DELETE"):
+            if GracefulDegradationMiddleware.notification_circuit is None:
+                GracefulDegradationMiddleware.notification_circuit = CircuitBreaker(
+                    failure_threshold=3, recovery_timeout=15.0
+                )
+
+            async def notification_circuit_breaker_next() -> Response:
+                original_call_next = call_next
+
+                async def _service_call():
+                    return await original_call_next(request)
+
+                circuit = GracefulDegradationMiddleware.notification_circuit
+
+                try:
+                    return await circuit.call(_service_call)
+                except Exception:
+                    if GracefulDegradationMiddleware.notification_circuit:
+                        return Response(
+                            content=json.dumps(
+                                GracefulDegradationMiddleware.notification_fallback_response
+                            ),
+                            status_code=200,
+                            media_type="application/json",
+                        )
+                    return Response(
+                        content=json.dumps(
+                            {"status": "error", "detail": "internal server error"}
+                        ),
+                        status_code=500,
+                        media_type="application/json",
+                    )
+
+            call_next = notification_circuit_breaker_next
+
+        response: Response = await call_next(request)
+
+        # Add degradation headers for monitoring
+        if request.state.correlation_id:
+            response.headers[
+                "X-Degraded"
+            ] = "true" if GracefulDegradationMiddleware._is_any_circuit_open() else "false"
+
+        return response
+
+    @staticmethod
+    def _is_any_circuit_open() -> bool:
+        """Check if any circuit breaker is currently OPEN."""
+        circuits = [
+            GracefulDegradationMiddleware.ai_circuit,
+            GracefulDegradationMiddleware.search_circuit,
+            GracefulDegradationMiddleware.notification_circuit,
+        ]
+        return any(c and c._state == "OPEN" for c in circuits if c is not None)
