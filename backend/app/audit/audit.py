@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
@@ -17,9 +16,14 @@ from app.core.logging import logger
 #: environment variable or keep the default under the project directory.
 DEFAULT_AUDIT_LOG = Path(__file__).resolve().parent.parent.parent / "audit" / "audit.log"
 
-AUDIT_LOG_PATH = Path(
-    os.getenv("AUDIT_LOG_PATH", DEFAULT_AUDIT_LOG)
-)
+
+def _get_audit_log_path() -> Path:
+    """Return the audit log path, respecting the ``AUDIT_LOG_PATH`` env var."""
+    import os
+    return Path(os.getenv("AUDIT_LOG_PATH", DEFAULT_AUDIT_LOG))
+
+
+AUDIT_LOG_PATH = _get_audit_log_path()
 
 #: Maximum number of entries to keep in the log file. Older entries are
 #: truncated when the limit is exceeded.

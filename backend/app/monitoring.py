@@ -11,23 +11,13 @@ Provides:
 from __future__ import annotations
 
 import json
-import asyncio
 import time
 import uuid
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Callable
 
 from fastapi import Request, Response
-from opentelemetry import trace, metrics
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-from opentelemetry.exporter.prometheus import PrometheusMetricReader
-from opentelemetry.metrics import get_meter_provider, Meter
-from opentelemetry.semconv.resource import Resource
-from opentelemetry.resource import Resource as SDKResource
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource as SDKResourceV2
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import Tracer, Status, Span
 
 # ------------------------------------------------------------------
 # JSON logger using standard library (no structlog dependency)
@@ -47,7 +37,6 @@ class JSONFormatter(logging.Formatter):
             "message": record.getMessage(),
             "correlation_id": getattr(record, "correlation_id", None),
         }
-        # Add any extra fields passed via logger.extra
         for key in record.__dict__:
             if key not in (
                 "name",
@@ -77,12 +66,11 @@ handler = logging.StreamHandler()
 handler.setFormatter(JSONFormatter())
 setup_logger.addHandler(handler)
 
-# Export for import
 logger = setup_logger
 
 
 # ------------------------------------------------------------------
-# OpenTelemetry setup
+# OpenTelemetry setup (lazy imports - opentelemetry optional)
 # ------------------------------------------------------------------
 
 
@@ -94,7 +82,17 @@ def setup_otel(
     """Initialize OpenTelemetry tracer and meter.
 
     Returns (tracer, meter, trace_provider) tuple.
+    All opentelemetry imports are done lazily inside the function.
     """
+    # Lazy imports - opentelemetry is optional
+    from opentelemetry import trace
+    from opentelemetry.metrics import get_meter_provider
+    from opentelemetry.semconv.resource import Resource
+    from opentelemetry.resource import Resource as SDKResource
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource as SDKResourceV2
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
     resource = SDKResourceV2.create(
         {SERVICE_NAME: service_name, "host.name": "unknown", "os": "unknown"}
     )
@@ -102,6 +100,8 @@ def setup_otel(
     trace_provider = TracerProvider(resource=resource)
 
     if endpoint:
+        from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+
         jaeger_exporter = JaegerExporter(endpoint=endpoint)
         trace_provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
 
@@ -110,9 +110,12 @@ def setup_otel(
 
     meter = None
     if enable_metrics:
+        from opentelemetry.exporter.prometheus import PrometheusMetricReader
+        from opentelemetry import metrics as otel_metrics
+
         meter = get_meter_provider().get_meter(service_name)
         prom_reader = PrometheusMetricReader()
-        meter_provider = metrics.get_meter_provider()
+        meter_provider = otel_metrics.get_meter_provider()
         meter_provider.add_metric_reader(prom_reader)
 
     return tracer, meter, trace_provider
@@ -136,7 +139,6 @@ def correlation_id_middleware(get_response: Callable) -> Callable:
         response = await get_response(request)
         response.headers["X-Correlation-ID"] = correlation_id
 
-        # Log with correlation ID using the JSON logger
         logger.info(
             "request",
             correlation_id=correlation_id,
@@ -180,13 +182,17 @@ def metrics_middleware(tracer=None, meter=None) -> Callable:
         unit="1",
     ) if meter else None
 
+    # OpenTelemetry tracer (lazy)
+    from opentelemetry import trace as _trace
+
     def middleware(get_response: Callable) -> Callable:
         async def inner(request: Request, **kwargs) -> Response:
             start_time = time.time()
+            duration = 0.0
+            error_occurred = False
 
             if tracer:
-                from opentelemetry import trace as trace_module
-                with trace_module.start_as_current_span(
+                with _trace.start_as_current_span(
                     f"HTTP {request.method} {request.url.path}"
                 ) as span:
                     span.set_attribute("http.method", request.method)
@@ -195,40 +201,33 @@ def metrics_middleware(tracer=None, meter=None) -> Callable:
 
                     try:
                         response = await get_response(request)
-                        span.set_status(Status.OK)
+                        span.set_status()
                         if ERROR_COUNT:
-                            ERROR_COUNT.add(0)
+                            ERROR_COUNT.add(1)  # will be overridden below
                         return response
                     except Exception as e:
-                        if tracer:
-                            from opentelemetry import trace as trace_module2
-                            span2 = trace_module2.get_current_span()
-                            span2.record_exception(e)
-                            span2.set_status(Status.ERROR)
+                        error_occurred = True
+                        span.record_exception(e)
+                        span.set_status()
                         if ERROR_COUNT:
                             ERROR_COUNT.add(1)
                         raise
-                        finally:
-                            duration = time.time() - start_time
-                            if REQUEST_COUNT:
-                                REQUEST_COUNT.add(1)
-                            if REQUEST_DURATION:
-                                REQUEST_DURATION.record(duration)
             else:
                 try:
                     response = await get_response(request)
                 except Exception:
+                    error_occurred = True
                     if ERROR_COUNT:
                         ERROR_COUNT.add(1)
                     raise
-                    finally:
-                        duration = time.time() - start_time
-                        if REQUEST_COUNT:
-                            REQUEST_COUNT.add(1)
-                        if REQUEST_DURATION:
-                            REQUEST_DURATION.record(duration)
 
-            return await get_response(request)
+            duration = time.time() - start_time
+            if REQUEST_COUNT:
+                REQUEST_COUNT.add(1)
+            if REQUEST_DURATION:
+                REQUEST_DURATION.record(duration)
+
+            return response if not error_occurred else None  # type: ignore
 
         return inner
 
