@@ -11,6 +11,6 @@ Checklist applied before shipping to production (final milestone).
 - [ ] Backups: automated PostgreSQL + object storage backups, tested restore.
 - [ ] Read-only replicas / failover strategy documented.
 - [ ] Structured logs shipped to a central sink; Prometheus/Grafana dashboards live.
-- [ ] Database migrations run as a separate step, not during app boot.
+- [x] Database migrations run as a separate step, not during app boot.
 - [ ] Minimal image sizes, distroless where practical; non-root containers.
 - [ ] Dependency vulnerability scanning in CI.
