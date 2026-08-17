@@ -170,47 +170,7 @@ class VectorSearchBackend(SearchBackend):
 
         summarization = get_summarization_service()
 
-        # Demo documents with pre-computed embeddings conceptually
-        # Each entry: (doc_id, title, vault_id, content, metadata)
-        demo_documents = [
-            {
-                "doc_id": "doc-001",
-                "title": "Emergency Contact Protocol",
-                "vault_id": "vault-001",
-                "content": "In case of emergency, contact the primary executor. Secondary contacts include the family lawyer and nearest relative. Updated 2024.",
-                "metadata": {"type": "protocol", "category": "emergency"},
-            },
-            {
-                "doc_id": "doc-002",
-                "title": "Will & Testament Guidelines",
-                "vault_id": "vault-001",
-                "content": "The last will and testament should be stored in a secure vault. Name the primary beneficiaries and alternate beneficiaries. Include witness signatures.",
-                "metadata": {"type": "legal", "category": "estate"},
-            },
-            {
-                "doc_id": "doc-003",
-                "doc_id": "doc-003",
-                "title": "Digital Legacy Instructions",
-                "vault_id": "vault-002",
-                "content": "Specify which digital accounts should be closed or memorialized. Provide usernames, URLs, and master passwords for the vault.",
-                "metadata": {"type": "digital", "category": "legacy"},
-            },
-            {
-                "doc_id": "doc-004",
-                "title": "Medical Power of Attorney",
-                "vault_id": "vault-002",
-                "content": "Designate a healthcare agent who can make medical decisions. Include contact information and secondary agent details.",
-                "metadata": {"type": "medical", "category": "healthcare"},
-            },
-            {
-                "doc_id": "doc-005",
-                "title": "Funeral Arrangement Preference",
-                "vault_id": "vault-003",
-                "content": "Document preferences for funeral services, burial vs cremation, and memorial location. Include any religious or cultural requirements.",
-                "metadata": {"type": "preferences", "category": "funeral"},
-            },
-        ]
-
+        # TODO: Replace with pgvector query when vector store is configured.
         # Embed query and each document, compute relevance
         results: list[SearchResult] = []
         for doc in demo_documents:

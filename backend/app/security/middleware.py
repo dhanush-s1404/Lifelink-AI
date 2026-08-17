@@ -10,8 +10,9 @@ Provides security middleware and utilities for the FastAPI backend:
 
 from __future__ import annotations
 
+import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 from fastapi import Request, Response
@@ -161,6 +162,12 @@ class RateLimiter:
 # ---------------------------------------------------------------
 
 
+from fastapi import Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from starlette.types import ASGIApp
+import jwt
+
+
 class TokenValidator(HTTPBearer):
     """HTTP Bearer token validator with JWT verification.
 
@@ -193,14 +200,19 @@ class TokenValidator(HTTPBearer):
 
         token = credentials.credentials
 
-        # TODO: Integrate with actual JWT verification library
-        # For now, return a placeholder indicating token was received
-        # In production, verify signature, expiration, claims, etc.
         try:
-            # Placeholder: decode without verification for demo
-            # payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            return {"token_received": True, "scheme": "bearer"}
-        except Exception:
+            # Verify JWT signature, expiration, and claims
+            payload = jwt.decode(
+                token,
+                options={"require_exp": True, "require_sub": False},
+                algorithms=["HS256"],
+            )
+            # Attach payload to request state for downstream use
+            request.state.jwt_payload = payload
+            return payload
+        except jwt.ExpiredSignatureError:
+            return None
+        except jwt.InvalidTokenError:
             return None
 
 

@@ -161,8 +161,9 @@ async def health() -> JSONResponse:
         results[name] = result.to_dict()
         if result.status != "healthy":
             all_ok = False
-    overall = "healthy" if all_ok else "unhealthy"
-    return JSONResponse({"status": overall, "checks": results})
+    overall = "ok" if all_ok else "unhealthy"
+    service_name = "LifeLink AI"
+    return JSONResponse({"status": overall, "service": service_name, "checks": results})
 
 
 @app.get("/ready", tags=["system", "monitoring"])

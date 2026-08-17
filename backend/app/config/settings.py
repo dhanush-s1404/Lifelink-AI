@@ -1,6 +1,44 @@
 """Application configuration using pydantic-settings.
 
-Secrets are injected via environment variables only; never hardcoded.
+# ------------------------------------------------------------------
+# Production secret validation
+# ------------------------------------------------------------------
+import os
+
+_PROD_SECRET_FLAGS = {"change_me", "dev_secret", "default", "password"}
+
+
+def _validate_secret(name: str, value: str | None) -> None:
+    """Validate that a secret is not a known default/insecure value."""
+    if value is None:
+        return  # Optional secret, that's fine
+    lower = value.lower().strip()
+    if lower in _PROD_SECRET_FLAGS:
+        raise ValueError(
+            f"Insecure secret detected for {name}: {value!r}. "
+            "Do not use default secrets in production."
+        )
+
+
+# Validate key secrets at import time
+_secrets_checked = False
+
+
+def _check_secrets() -> None:
+    global _secrets_checked
+    if _secrets_checked:
+        return
+    _secrets_checked = True
+    
+    for env_name in ["JWT_SECRET", "ENCRYPTION_KEY", "MINIO_ACCESS_KEY",
+                     "MINIO_SECRET_KEY", "POSTGRES_PASSWORD", "REDIS_PASSWORD",
+                     "EMAIL_HOST_PASSWORD"]:
+        val = os.getenv(env_name)
+        if val and val.lower().strip() in _PROD_SECRET_FLAGS:
+            raise ValueError(
+                f"Insecure secret detected for {env_name}: {val!r}. "
+                "Do not use default secrets in production."
+            )ardcoded.
 """
 
 from functools import lru_cache
