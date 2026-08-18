@@ -20,6 +20,7 @@ from app.monitoring import (
     HealthCheckResult,
     configure_logging,
 )
+from app.security.middleware import SecurityHeadersMiddleware
 
 # ------------------------------------------------------------------
 # OpenTelemetry setup (tracer + meter + Prometheus metrics)
@@ -81,8 +82,11 @@ app = FastAPI(
 # Middleware
 # ------------------------------------------------------------------
 
-# Correlation ID middleware (adds X-Correlation-ID to requests/responses)
+# Correlation ID middleware (adds X-Correlation-ID / X-Request-ID to responses)
 app.add_middleware(CorrelationIDMiddleware)
+
+# Security headers (nosniff, frame options, HSTS, CSP)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS
 app.add_middleware(

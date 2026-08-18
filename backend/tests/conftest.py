@@ -123,4 +123,16 @@ async def _clean_db(db_engine) -> AsyncGenerator[None, None]:
         stmt = text(f"TRUNCATE TABLE {', '.join(tables)} CASCADE")
         async with db_engine.begin() as conn:
             await conn.execute(stmt)
+    # Reset in-memory rate limiters so the suite is not throttled (all test
+    # requests share the same client IP).
+    from app.auth import routes as auth_routes
+
+    for limiter in (
+        auth_routes.login_limiter,
+        auth_routes.register_limiter,
+        auth_routes.otp_limiter,
+        auth_routes.email_limiter,
+        auth_routes.ai_limiter,
+    ):
+        limiter._records.clear()
     yield
