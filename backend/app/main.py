@@ -3,6 +3,7 @@
 import time
 import uuid
 from contextlib import asynccontextmanager
+from typing import Any, Callable, Dict
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,15 +12,13 @@ from fastapi.responses import JSONResponse
 from app.api.router import api_router
 from app.config.settings import settings
 from app.core.exceptions import register_exception_handlers
-from app.core.logging import logger
 from app.monitoring import (
     setup_otel,
-    correlation_id_middleware,
-    metrics_middleware,
+    CorrelationIDMiddleware,
     create_health_router,
     get_structured_logger,
     HealthCheckResult,
-    GracefulDegradationMiddleware,
+    configure_logging,
 )
 
 # ------------------------------------------------------------------
@@ -47,7 +46,7 @@ async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
 
     # Log application start
-    logger.info(
+    log.info(
         "application_starting",
         app_name=settings.app_name,
         env=settings.environment,
@@ -57,7 +56,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Log application stop
-    logger.info("application_stopping")
+    log.info("application_stopping")
 
     # Shut down OpenTelemetry
     if trace_provider:
@@ -83,13 +82,7 @@ app = FastAPI(
 # ------------------------------------------------------------------
 
 # Correlation ID middleware (adds X-Correlation-ID to requests/responses)
-app.add_middleware(correlation_id_middleware)
-
-# Metrics middleware (counters, histograms, error counts)
-app.add_middleware(metrics_middleware(tracer, meter))
-
-# Graceful degradation middleware (circuit breakers for external services)
-app.add_middleware(GracefulDegradationMiddleware)
+app.add_middleware(CorrelationIDMiddleware)
 
 # CORS
 app.add_middleware(

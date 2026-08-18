@@ -72,7 +72,6 @@ Development in progress — milestone-driven build.
 
 ## Repo Layout
 
-```
 lifelink-ai/
 ├── frontend/        # Next.js + TypeScript + Tailwind
 ├── backend/         # FastAPI application (modular monolith)
@@ -82,7 +81,6 @@ lifelink-ai/
 ├── docs/            # Architecture, security, API, deployment docs
 ├── tests/           # Top-level / end-to-end test material
 └── .github/         # CI/CD workflows
-```
 
 ## Quick Start (Docker)
 
@@ -91,9 +89,9 @@ cp .env.example .env
 docker compose up --build
 ```
 
-- Frontend: http://localhost:3000
-- Backend API / Swagger: http://localhost:8000/docs
-- MinIO console: http://localhost:9001
+ Frontend: http://localhost:3000
+ Backend API / Swagger: http://localhost:8000/docs
+ MinIO console: http://localhost:9001
 
 See [docs/deployment/docker.md](docs/deployment/docker.md) for details.
 
@@ -126,4 +124,5 @@ Interactive docs: `http://localhost:8000/docs` (Swagger UI).
 
 Proprietary / all rights reserved.
 
-opencode -s ses_0144d5e0dffeOig6mNWBBuEm1N
+opencode -s ses_0144d5e0dffeOig6mNWBBuEm1N.
+opencode -s ses_fec31696bffeQ5SGFwfCsIhu28

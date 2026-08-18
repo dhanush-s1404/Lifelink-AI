@@ -7,7 +7,7 @@ from typing import cast
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     # Auth
     secret_key: str = ""
     algorithm: str = "HS256"
+    jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
@@ -46,8 +48,13 @@ class Settings(BaseSettings):
     minio_endpoint: str = "http://localhost:9000"
     minio_access_key: str = ""
     minio_secret_key: str = ""
+    minio_root_user: str = ""
+    minio_root_password: str = ""
+    minio_bucket: str = "lifelink"
+    minio_secure: bool = False
 
     # Email
+    email_transport: str = "console"
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
@@ -59,6 +66,7 @@ class Settings(BaseSettings):
 
     # Observability
     otel_endpoint: str = ""
+    opentelemetry_endpoint: str = ""
     enable_metrics: bool = True
 
     # Rate limiting
@@ -75,6 +83,16 @@ class Settings(BaseSettings):
     # CORS
     cors_methods: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     cors_allow_credentials: bool = True
+
+    @model_validator(mode="after")
+    def _backfill_aliases(self) -> "Settings":
+        if not self.jwt_secret_key:
+            self.jwt_secret_key = self.secret_key
+        if not self.jwt_algorithm:
+            self.jwt_algorithm = self.algorithm
+        if not self.opentelemetry_endpoint:
+            self.opentelemetry_endpoint = self.otel_endpoint
+        return self
 
 settings = Settings()
 

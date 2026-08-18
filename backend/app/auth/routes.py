@@ -34,6 +34,7 @@ login_limiter = RateLimiter(calls=5, period=60)      # 5 login attempts per minu
 register_limiter = RateLimiter(calls=3, period=60)   # 3 registration attempts per minute
 otp_limiter = RateLimiter(calls=3, period=60)        # 3 OTP attempts per minute
 email_limiter = RateLimiter(calls=5, period=60)     # 5 email verification attempts per minute
+ai_limiter = RateLimiter(calls=10, period=60)       # 10 AI chat requests per minute
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -112,6 +113,7 @@ async def logout(
 @router.post("/password-reset/request", status_code=202)
 async def request_password_reset(
     body: PasswordResetRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     transport: EmailTransport = Depends(get_email_transport),
 ) -> dict:
@@ -160,6 +162,7 @@ async def generate_otp(
     body: OtpResendRequest,
     request: Request,
     session: AsyncSession = Depends(get_session),
+    transport: EmailTransport = Depends(get_email_transport),
     user: User = Depends(get_current_user),
 ) -> AuthSuccess:
     _check_rate_limit(otp_limiter, request)
@@ -187,7 +190,9 @@ async def verify_otp(
 ) -> AuthSuccess:
     _check_rate_limit(otp_limiter, request)
     service = AuthService(session, UserRepository(session))
-    result = await service.verify_otp(otp_code=body.otp_code, purpose=body.purpose)
+    result = await service.verify_otp(
+        user_id=user.id, otp_code=body.otp_code, purpose=body.purpose
+    )
     user = result["user"]
     tokens, _ = await service._create_token_pair(user, None)
     return AuthSuccess(
@@ -248,3 +253,31 @@ async def _list_active_sessions(session: AsyncSession, user: User) -> list[dict]
         }
         for s in rows
     ]
+
+
+@router.post("/ai/chat", response_model=dict)
+async def ai_chat(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Chat with the LifeLink AI assistant."""
+    _check_rate_limit(ai_limiter, request)
+    
+    body = await request.json()
+    message = body.get("message", "")
+    
+    if not message.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Message is required",
+        )
+    
+    # Use the AI assistant to respond
+    assistant = AIAssistant()
+    result = assistant.ask(message, str(user.id))
+
+    return {
+        "response": result.answer,
+        "status": "success",
+    }

@@ -119,9 +119,10 @@ class OtpVerificationToken(BaseModel):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    otp_code: Mapped[str] = mapped_column(String(6), nullable=False)
+    otp_code: Mapped[str] = mapped_column(String(64), nullable=False)
     purpose: Mapped[str] = mapped_column(String(50), nullable=False, default="login")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempt_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     is_locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

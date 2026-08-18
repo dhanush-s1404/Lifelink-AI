@@ -1,220 +1,148 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { useToast } from "@/lib/toast";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { ApiError, apiPost } from "@/lib/api";
 
-export default function OtpVerifyPage() {
+function OtpVerifyContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { push } = useToast();
-  const [otpCode, setOtpCode] = useState<string>("");
-  const [resendDisabled, setResendDisabled] = useState(false);
+  const purpose = searchParams.get("purpose") ?? "login";
+  const next = searchParams.get("next") ?? "/dashboard";
+
+  const [otpCode, setOtpCode] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendDisabled, setResendDisabled] = useState(true);
   const [resendTime, setResendTime] = useState(30);
 
   useEffect(() => {
-    // Set timeout for auto-focus (simulated - input order matters in JSX)
-    const input = document.querySelector('[data-index="0"]') as HTMLInputElement | null;
-    if (input) {
-      input.focus();
-    }
+    const input = document.querySelector<HTMLInputElement>("#otp-input");
+    input?.focus();
   }, []);
 
-  const handleResend = async () => {
-    try {
-      await fetch(`/auth/otp/resend`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ purpose: "login" }),
-        credentials: "include",
-      });
-      setResendDisabled(true);
-    } catch (err: any) {
-      if (err instanceof Error) {
-        push("error", err.message || "Failed to resend OTP");
-      } else {
-        push("error", "Unable to resend OTP. Please try again.");
-      }
-    }
-  };
-
-  // Countdown timer
   useEffect(() => {
-    let minutes = resendTime;
+    if (!resendDisabled) return;
     const interval = setInterval(() => {
-      setResendTime((minutes) => {
-        if (minutes <= 0) {
+      setResendTime((current) => {
+        if (current <= 1) {
           clearInterval(interval);
           setResendDisabled(false);
           return 30;
         }
-        return minutes - 1;
+        return current - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [resendTime]);
+  }, [resendDisabled]);
 
-  const handleSubmit = async () => {
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      await apiPost("/auth/otp/resend", { purpose });
+      push("success", "A new code has been sent.");
+      setResendDisabled(true);
+      setResendTime(30);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Unable to resend the code.";
+      push("error", message);
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (otpCode.length !== 6) {
-      push("error", "Please enter a 6-digit code");
+      push("error", "Enter the full 6-digit code");
       return;
     }
+    setSubmitting(true);
     try {
-      await fetch(`/auth/otp/verify`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ otp_code: otpCode }),
-        credentials: "include",
-      });
-      router.push("/dashboard");
-    } catch (err: any) {
-      if (err instanceof Error) {
-        push("error", err.message || "Failed to verify code");
-      } else {
-        push("error", "Unable to verify code. Please try again.");
-      }
+      await apiPost("/auth/otp/verify", { otp_code: otpCode, purpose });
+      router.push(next);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Unable to verify the code.";
+      push("error", message);
+      setOtpCode("");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-brand-600" aria-hidden="true" />
+          <CardTitle>Verify your code</CardTitle>
+        </div>
+      </CardHeader>
+      <CardBody>
+        <p className="mb-4 text-sm text-slate-600">
+          A 6-digit verification code was sent to your email. Enter it below to continue.
+        </p>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Input
+            id="otp-input"
+            label="Verification code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="123456"
+            maxLength={6}
+            value={otpCode}
+            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            required
+          />
+          <Button type="submit" size="lg" loading={submitting} disabled={otpCode.length !== 6}>
+            Verify
+          </Button>
+        </form>
+
+        <div className="mt-6 flex items-center justify-between text-sm">
+          <span className="text-slate-500">
+            {resendDisabled ? `Resend available in ${resendTime}s` : "Didn't get a code?"}
+          </span>
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resendDisabled || resending}
+            className="font-medium text-brand-600 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+          >
+            {resending ? "Sending…" : "Resend code"}
+          </button>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+export default function OtpVerifyPage() {
+  return (
     <main className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Verify Your Code</CardTitle>
-        </CardHeader>
-        <CardBody>
-          <p className="mb-4">
-            A 6-digit verification code has been sent to your email.
-          </p>
-
-          <form onSubmit={e => { e.preventDefault(); handleSubmit(); }} className="flex flex-col gap-4">
-            <Input
-              data-index="0"
-              type="number"
-              inputMode="numeric"
-              placeholder=""
-              maxLength={1}
-              value={otpCode[0] || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "").substring(0, 1);
-                setOtpCode((c) => c.replace(/\D/g, "").substring(0, 6) + value);
-              }}
-            />
-            <Input
-              data-index="1"
-              type="number"
-              inputMode="numeric"
-              placeholder=""
-              maxLength={1}
-              value={otpCode[1] || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "").substring(0, 1);
-                setOtpCode((c) => c.replace(/\D/g, "").substring(0, 6) + value);
-              }}
-            />
-            <Input
-              data-index="2"
-              type="number"
-              inputMode="numeric"
-              placeholder=""
-              maxLength={1}
-              value={otpCode[2] || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "").substring(0, 1);
-                setOtpCode((c) => c.replace(/\D/g, "").substring(0, 6) + value);
-              }}
-            />
-            <Input
-              data-index="3"
-              type="number"
-              inputMode="numeric"
-              placeholder=""
-              maxLength={1}
-              value={otpCode[3] || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "").substring(0, 1);
-                setOtpCode((c) => c.replace(/\D/g, "").substring(0, 6) + value);
-              }}
-            />
-            <Input
-              data-index="4"
-              type="number"
-              inputMode="numeric"
-              placeholder=""
-              maxLength={1}
-              value={otpCode[4] || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "").substring(0, 1);
-                setOtpCode((c) => c.replace(/\D/g, "").substring(0, 6) + value);
-              }}
-            />
-            <Input
-              data-index="5"
-              type="number"
-              inputMode="numeric"
-              placeholder=""
-              maxLength={1}
-              value={otpCode[5] || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "").substring(0, 1);
-                setOtpCode((c) => c.replace(/\D/g, "").substring(0, 6) + value);
-              }}
-            />
-
-            <div className="mt-4">
-              <p className="text-sm text-slate-500">
-                Or paste the full code below
-              </p>
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="123456"
-                maxLength={6}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, "").substring(0, 6);
-                  if (value.length === 6) {
-                    setOtpCode(value);
-                  }
-                }}
-              />
-            </div>
-
-            {resendDisabled && (
-              <p className="mt-4 text-sm text-slate-500">
-                Resend in {resendTime}s
-              </p>
-            )}
-
-            {!resendDisabled && (
-              <button
-                type="button"
-                onClick={handleResend}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
-              >
-                Resend OTP
-              </button>
-            )}
-
-            <Button type="submit" size="lg" disabled={resendDisabled}>
-              Verify
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-slate-600">
-            No account yet?{" "}
-            <a href="/auth/register" className="font-medium text-brand-600 hover:underline">
-              Create one
-            </a>
-          </p>
-        </CardBody>
-      </Card>
+      <Suspense
+        fallback={
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Verify your code</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <p className="text-sm text-slate-500">Loading…</p>
+            </CardBody>
+          </Card>
+        }
+      >
+        <OtpVerifyContent />
+      </Suspense>
     </main>
   );
 }

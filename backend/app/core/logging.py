@@ -11,7 +11,7 @@ it is redacted to ``[REDACTED]``.
 import json
 import logging
 
-from app.monitoring import JSONFormatter
+from app.monitoring import JSONFormatter, StructuredLogger
 
 # ------------------------------------------------------------------
 # Logger setup (JSON-formatted, no structlog dependency)
@@ -26,7 +26,7 @@ _handler.setFormatter(JSONFormatter())
 _log.addHandler(_handler)
 
 # Export for import throughout the codebase
-logger = _log
+logger = StructuredLogger(_log)
 
 # ------------------------------------------------------------------
 # Sensitive‑key redaction helper (used by middleware / spans)

@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Callable
 
 from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 # ------------------------------------------------------------------
 # JSON logger using standard library (no structlog dependency)
@@ -66,7 +67,46 @@ handler = logging.StreamHandler()
 handler.setFormatter(JSONFormatter())
 setup_logger.addHandler(handler)
 
-logger = setup_logger
+
+class StructuredLogger:
+    """Proxy that supports structlog-style ``logger.info("event", key=value)``.
+
+    Keyword arguments are forwarded as structured ``extra`` fields so the
+    JSON formatter can serialize them. Values that look sensitive are
+    redacted by the formatter callers (see ``app.core.logging``).
+    """
+
+    def __init__(self, logger: logging.Logger) -> None:
+        self._logger = logger
+
+    def _emit(self, level: str, msg: str, exc_info=None, **kwargs) -> None:
+        getattr(self._logger, level)(msg, extra=dict(kwargs) if kwargs else None, exc_info=exc_info)
+
+    def debug(self, msg: str, **kwargs) -> None:
+        self._emit("debug", msg, **kwargs)
+
+    def info(self, msg: str, **kwargs) -> None:
+        self._emit("info", msg, **kwargs)
+
+    def warning(self, msg: str, **kwargs) -> None:
+        self._emit("warning", msg, **kwargs)
+
+    def warn(self, msg: str, **kwargs) -> None:
+        self._emit("warning", msg, **kwargs)
+
+    def error(self, msg: str, **kwargs) -> None:
+        self._emit("error", msg, **kwargs)
+
+    def exception(self, msg: str, **kwargs) -> None:
+        self._emit("error", msg, exc_info=True, **kwargs)
+
+
+logger = StructuredLogger(setup_logger)
+
+
+def configure_logging(level: str = "INFO") -> None:
+    """Configure the structured logger level (safe to call more than once)."""
+    setup_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
 
 # ------------------------------------------------------------------
@@ -83,15 +123,18 @@ def setup_otel(
 
     Returns (tracer, meter, trace_provider) tuple.
     All opentelemetry imports are done lazily inside the function.
+    Returns (None, None, None) when OpenTelemetry is not installed, so the
+    application can still boot in development.
     """
-    # Lazy imports - opentelemetry is optional
-    from opentelemetry import trace
-    from opentelemetry.metrics import get_meter_provider
-    from opentelemetry.semconv.resource import Resource
-    from opentelemetry.resource import Resource as SDKResource
-    from opentelemetry.sdk.resources import SERVICE_NAME, Resource as SDKResourceV2
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    try:
+        # Lazy imports - opentelemetry is optional
+        from opentelemetry import trace
+        from opentelemetry.metrics import get_meter_provider
+        from opentelemetry.sdk.resources import SERVICE_NAME, Resource as SDKResourceV2
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    except ImportError:
+        return None, None, None
 
     resource = SDKResourceV2.create(
         {SERVICE_NAME: service_name, "host.name": "unknown", "os": "unknown"}
@@ -126,17 +169,17 @@ def setup_otel(
 # ------------------------------------------------------------------
 
 
-def correlation_id_middleware(get_response: Callable) -> Callable:
-    """FastAPI middleware that adds correlation ID to requests and logs."""
+class CorrelationIDMiddleware(BaseHTTPMiddleware):
+    """Adds and echoes a correlation ID on every request."""
 
-    async def middleware(request: Request, **kwargs) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         correlation_id = request.headers.get("X-Correlation-ID")
         if not correlation_id:
             correlation_id = str(uuid.uuid4())
 
         request.state.correlation_id = correlation_id
 
-        response = await get_response(request)
+        response = await call_next(request)
         response.headers["X-Correlation-ID"] = correlation_id
 
         logger.info(
@@ -150,8 +193,6 @@ def correlation_id_middleware(get_response: Callable) -> Callable:
         )
 
         return response
-
-    return middleware
 
 
 # ------------------------------------------------------------------
@@ -297,6 +338,6 @@ def create_health_router(
 # ------------------------------------------------------------------
 
 
-def get_structured_logger() -> logging.Logger:
+def get_structured_logger() -> StructuredLogger:
     """Get the application-structured logger."""
     return logger

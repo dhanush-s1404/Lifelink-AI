@@ -41,7 +41,7 @@ class AuthSuccess(BaseModel):
     """Envelope combining tokens with basic user info."""
 
     user: dict
-    tokens: TokenPair
+    tokens: TokenPair | None = None
 
 
 class SessionOut(BaseModel):

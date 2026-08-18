@@ -1,19 +1,36 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Archive, Bell, HelpCircle, LayoutDashboard, LogOut, Settings, Shield, Sparkles, Users } from "lucide-react";
+import {
+  Archive,
+  Bell,
+  FileText,
+  HelpCircle,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Shield,
+  ShieldAlert,
+  Sparkles,
+  User,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
+import { ChatPanel } from "@/components/ai/ChatPanel";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/vault", label: "Vault", icon: Archive },
+  { href: "/documents", label: "Documents", icon: FileText },
   { href: "/trusted-contacts", label: "Trusted contacts", icon: Users },
-  { href: "/emergency", label: "Emergency", icon: Shield },
+  { href: "/emergency", label: "Emergency", icon: ShieldAlert },
   { href: "/ai", label: "AI assistant", icon: Sparkles },
   { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/profile", label: "Profile", icon: User },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/security", label: "Security", icon: Shield },
 ];
@@ -22,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen">
@@ -89,6 +107,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className="flex-1">{children}</main>
+        {chatOpen && <ChatPanel onClose={() => setChatOpen(false)} />}
+        <button
+          onClick={() => setChatOpen((open) => !open)}
+          className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition hover:bg-brand-700"
+          aria-label={chatOpen ? "Collapse AI assistant" : "Open AI assistant"}
+        >
+          <Sparkles className="h-5 w-5" aria-hidden="true" />
+        </button>
       </div>
     </div>
   );

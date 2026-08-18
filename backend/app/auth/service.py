@@ -28,7 +28,12 @@ from app.auth.password import hash_password, verify_password
 from app.auth.schemas import AuthSuccess, TokenPair
 from app.config.settings import settings
 from app.core.exceptions import ConflictError, UnauthorizedError
-from app.core.security import create_access_token, generate_secret_token, utc_now
+from app.core.security import (
+    create_access_token,
+    generate_secret_token,
+    hash_token,
+    utc_now,
+)
 from app.notifications.email import EmailTransport, get_email_transport
 from app.users.models import User
 from app.users.repository import UserRepository
@@ -71,7 +76,7 @@ class AuthNotifier:
             subject=f"LifeLink AI — Your {purpose} verification code",
             text=(
                 f"Hi {full_name or 'there'},\n\n"
-                "Your LifeLink AI verification code is: {otp_code}\n\n"
+                f"Your LifeLink AI verification code is: {otp_code}\n\n"
                 "This code expires in 10 minutes. If you did not request this, "
                 "you can safely ignore this email.\n\n— LifeLink AI"
             ),
@@ -217,6 +222,37 @@ class AuthService:
 
         return await self._issue_tokens_for(user, user_agent=user_agent, ip_address=ip_address, remember_me=remember_me)
 
+    async def register(
+        self,
+        *,
+        email: str,
+        password: str,
+        full_name: str | None = None,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> AuthSuccess:
+        """Create a new user account and issue a token pair.
+
+        Uses the same password hashing as login (Argon2id).
+        """
+        email = email.lower().strip()
+        existing = await self._users.get_by_email(email)
+        if existing is not None:
+            raise ConflictError(
+                "An account with this email already exists",
+                code="EMAIL_ALREADY_REGISTERED",
+            )
+
+        user = await self._users.create(
+            email=email,
+            password_hash=hash_password(password),
+            full_name=full_name,
+            is_verified=False,
+        )
+        return await self._issue_tokens_for(
+            user, user_agent=user_agent, ip_address=ip_address, remember_me=False
+        )
+
     # ------------------------------------------------------------------
     # End MFA section
     # ------------------------------------------------------------------
@@ -352,28 +388,34 @@ class AuthService:
 
         return code
 
-    async def verify_otp(self, *, otp_code: str, purpose: str = "login") -> dict[str, Any]:
+    async def verify_otp(
+        self, *, user_id: uuid.UUID, otp_code: str, purpose: str = "login"
+    ) -> dict[str, Any]:
         """Verify a 6-digit OTP code.
 
         Returns user info if valid, raises error if invalid.
         Implements brute-force protection and rate limiting.
+        The lookup is scoped to the authenticated user, so codes can never be
+        used across accounts.
         """
         from sqlalchemy import select
 
-        # Find active (not expired, not used, not locked) OTP
+        # Find active (not expired, not used, not locked) OTP for this user
         stmt = select(OtpVerificationToken).where(
+            OtpVerificationToken.user_id == user_id,
             OtpVerificationToken.purpose == purpose,
             OtpVerificationToken.expires_at > utc_now(),
             OtpVerificationToken.used_at.is_(None),
         )
         result = await self._session.execute(stmt)
-        record = result.scalar_one_or_none()
-
-        if record is None:
+        records = result.scalars().all()
+        if not records:
             # Generic response to prevent enumeration
             raise UnauthorizedError(
                 "Invalid or expired verification code", code="INVALID_OTP"
             )
+        # Prefer the most recent active code
+        record = records[-1]
 
         # Check if locked
         if record.is_locked_until and record.is_locked_until > utc_now():
@@ -491,8 +533,18 @@ class AuthService:
         )
 
     async def _create_token_pair(
-        self, user: User, session_id: uuid.UUID
+        self, user: User, session_id: uuid.UUID | None
     ) -> tuple[TokenPair, uuid.UUID]:
+        if session_id is None:
+            session = UserSession(
+                user_id=user.id,
+                device_name=None,
+                expires_at=utc_now() + timedelta(days=settings.refresh_token_expire_days),
+            )
+            self._session.add(session)
+            await self._session.flush()
+            session_id = session.id
+
         raw_refresh = generate_secret_token()
         record = RefreshToken(
             user_id=user.id,
