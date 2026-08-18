@@ -33,6 +33,8 @@ export default function RegisterPage() {
   const router = useRouter();
   const { push } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -76,22 +78,42 @@ export default function RegisterPage() {
               error={errors.email?.message}
               {...register("email")}
             />
-            <Input
-              label="Password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              error={errors.password?.message}
-              {...register("password")}
-            />
-            <Input
-              label="Confirm password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Repeat your password"
-              error={errors.confirmPassword?.message}
-              {...register("confirmPassword")}
-            />
+            <div className="position-relative">
+              <Input
+                label="Password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                error={errors.password?.message}
+                {...register("password")}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "🙈" : "👁"}
+              </button>
+            </div>
+            <div className="position-relative">
+              <Input
+                label="Confirm password"
+                type={showConfirmPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder="Repeat your password"
+                error={errors.confirmPassword?.message}
+                {...register("confirmPassword")}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? "🙈" : "👁"}
+              </button>
+            </div>
             <Button type="submit" size="lg" loading={submitting}>
               Create account
             </Button>

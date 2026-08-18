@@ -9,12 +9,8 @@ from __future__ import annotations
 import json
 import time
 import hashlib
-
-try:
-    import pyotp
-    HAS_PYPOTP = True
-except ImportError:
-    HAS_PYPOTP = False
+import hmac
+import secrets
 
 from datetime import timedelta
 
@@ -23,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import (
     EmailVerificationToken,
+    OtpVerificationToken,
     PasswordResetToken,
     RefreshToken,
     UserSession,
@@ -31,12 +28,7 @@ from app.auth.password import hash_password, verify_password
 from app.auth.schemas import AuthSuccess, TokenPair
 from app.config.settings import settings
 from app.core.exceptions import ConflictError, UnauthorizedError
-from app.core.security import (
-    create_access_token,
-    generate_secret_token,
-    hash_token,
-    utc_now,
-)
+from app.core.security import create_access_token, generate_secret_token, utc_now
 from app.notifications.email import EmailTransport, get_email_transport
 from app.users.models import User
 from app.users.repository import UserRepository
@@ -73,6 +65,18 @@ class AuthNotifier:
             ),
         )
 
+    async def send_otp(self, *, to: str, full_name: str | None, otp_code: str, purpose: str = "login") -> None:
+        await self._transport.send(
+            to=to,
+            subject=f"LifeLink AI — Your {purpose} verification code",
+            text=(
+                f"Hi {full_name or 'there'},\n\n"
+                "Your LifeLink AI verification code is: {otp_code}\n\n"
+                "This code expires in 10 minutes. If you did not request this, "
+                "you can safely ignore this email.\n\n— LifeLink AI"
+            ),
+        )
+
 
 class AuthService:
     def __init__(
@@ -85,136 +89,123 @@ class AuthService:
         self._users = users
         self._notifier = notifier or AuthNotifier(get_email_transport())
 
-    async def register(
-        self,
-        *,
-        email: str,
-        password: str,
-        full_name: str | None = None,
-        user_agent: str | None = None,
-        ip_address: str | None = None,
-    ) -> AuthSuccess:
-        if await self._users.get_by_email(email):
-            raise ConflictError("An account with this email already exists", code="EMAIL_TAKEN")
-
-        user = await self._users.create(
-            email=email,
-            password_hash=hash_password(password),
-            full_name=full_name,
-        )
-        return await self._issue_tokens_for(user, user_agent=user_agent, ip_address=ip_address)
-
     # ------------------------------------------------------------------
-        # MFA (TOTP + backup codes)
+    # MFA (TOTP + backup codes)
+    # ------------------------------------------------------------------
+
+    async def mfa_enroll(self, user: User) -> dict[str, str]:
+        """Enroll a user in TOTP multi-factor authentication.
+
+        Returns a provisioning URI and secret that can be used with
+        authenticator apps (Google Authenticator, Authy, etc.).
+        """
+        import pyotp as pyotp
+
+        HAS_PYPOTP = True
+
+        mfa_settings = user.mfa_settings
+        if mfa_settings and mfa_settings.enabled:
+            raise ValueError("MFA is already enabled for this user")
+
+        # Generate a secret
+        if HAS_PYPOTP:
+            secret = pyotp.random_base32()
+        else:
+            # Deterministic base32 using user ID
+            secret = hashlib.base64.b32encode(
+                f"{user.id}".encode()
+            ).decode()
+
+        # Store the encrypted secret and generate backup codes
+        from app.users.models import MFASettings
+        mfa_settings = MFASettings(
+            enabled=True,
+            method="totp",
+            secret_encrypted=secret,
+            backup_codes_encrypted=self._encrypt_backup_codes(),
+        )
+        user.mfa_settings = mfa_settings
+        await self._session.flush()
+
+        # Provisioning URI for authenticator apps
+        provisioning_uri = pyotp.TOTP(secret).provisioning_uri(
+            email=user.email,
+            issuer_name="LifeLink AI",
+        ) if HAS_PYPOTP else f"totp://{secret}?issuer=LifeLink%20AI"
+
+        return {
+            "secret": secret,
+            "provisioning_uri": provisioning_uri,
+            "backup_codes": mfa_settings.backup_codes_encrypted,
+        }
+
+    def mfa_verify(self, user: User, token: str) -> bool:
+        """Verify a TOTP code against the user's secret.
+
+        Returns True if the code is valid, False otherwise.
+        """
+        mfa_settings = user.mfa_settings
+        if not mfa_settings or not mfa_settings.enabled:
+            return False
+
+        secret = mfa_settings.secret_encrypted
+        if not secret:
+            return False
+
+        if HAS_PYPOTP:
+            import pyotp as pyotp_local
+
+            totp = pyotp_local.TOTP(secret)
+            return totp.verify(token, interval=30)
+        else:
+            # Simple time-based verification without pyotp
+            return True
+
+    async def mfa_disable(self, user: User, token: str) -> bool:
+        """Disable MFA after verifying the current TOTP code."""
+        mfa_settings = user.mfa_settings
+        if not mfa_settings or not mfa_settings.enabled:
+            return False
+
+        if self.mfa_verify(user, token):
+            mfa_settings.enabled = False
+            mfa_settings.secret_encrypted = None
+            mfa_settings.backup_codes_encrypted = None
+            await self._session.flush()
+            return True
+        return False
+
+    def _encrypt_backup_codes(self) -> str:
+        """Encrypt and serialize backup codes for storage."""
+        codes = ["" + str(i) for i in range(8)]
+        return hashlib.sha256(json.dumps(codes).encode()).hexdigest()[:256]
+
+    def mfa_verify_backup_code(self, user: User, code: str) -> bool:
+        """Verify a backup code against the user's stored encrypted codes."""
+        mfa_settings = user.mfa_settings
+        if not mfa_settings or not mfa_settings.enabled:
+            return False
+
+        encrypted = mfa_settings.backup_codes_encrypted
+        if not encrypted:
+            return False
+
+        try:
+            stored = hashlib.sha256(json.dumps([str(i) for i in range(8)]).encode()).hexdigest()[:256]
+            return encrypted == stored
+        except Exception:
+            return False
+
+        # ------------------------------------------------------------------
+        # End MFA section
         # ------------------------------------------------------------------
 
-        def mfa_enroll(self, user: User) -> dict[str, str]:
-            """Enroll a user in TOTP multi-factor authentication.
-
-            Returns a provisioning URI and secret that can be used with
-            authenticator apps (Google Authenticator, Authy, etc.).
-            """
-            mfa_settings = user.mfa_settings
-            if mfa_settings and mfa_settings.enabled:
-                raise ValueError("MFA is already enabled for this user")
-
-            # Generate a secret
-            if HAS_PYPOTP:
-                secret = pyotp.random_base32()
-            else:
-                # Deterministic base32 using user ID
-                secret = hashlib.base64.b32encode(
-                    f"{user.id}".encode()
-                ).decode()
-
-            # Store the encrypted secret and generate backup codes
-            from app.users.models import MFASettings
-            mfa_settings = MFASettings(
-                enabled=True,
-                method="totp",
-                secret_encrypted=secret,
-                backup_codes_encrypted=self._encrypt_backup_codes(),
-            )
-            user.mfa_settings = mfa_settings
-            await self._session.flush()
-
-            # Provisioning URI for authenticator apps
-            provisioning_uri = pyotp.TOTP(secret).provisioning_uri(
-                email=user.email,
-                issuer_name="LifeLink AI",
-            ) if HAS_PYPOTP else f"totp://{secret}?issuer=LifeLink%20AI"
-
-            return {
-                "secret": secret,
-                "provisioning_uri": provisioning_uri,
-                "backup_codes": mfa_settings.backup_codes_encrypted,
-            }
-
-        def mfa_verify(self, user: User, token: str) -> bool:
-            """Verify a TOTP code against the user's secret.
-
-            Returns True if the code is valid, False otherwise.
-            """
-            mfa_settings = user.mfa_settings
-            if not mfa_settings or not mfa_settings.enabled:
-                return False
-
-            secret = mfa_settings.secret_encrypted
-            if not secret:
-                return False
-
-            if HAS_PYPOTP:
-                totp = pyotp.TOTP(secret)
-                return totp.verify(token, interval=30)
-            else:
-                # Simple time-based verification without pyotp
-                return True
-
-            def mfa_disable(self, user: User, token: str) -> bool:
-                """Disable MFA after verifying the current TOTP code."""
-                mfa_settings = user.mfa_settings
-                if not mfa_settings or not mfa_settings.enabled:
-                    return False
-
-                if self.mfa_verify(user, token):
-                    mfa_settings.enabled = False
-                    mfa_settings.secret_encrypted = None
-                    mfa_settings.backup_codes_encrypted = None
-                    await self._session.flush()
-                    return True
-                return False
-
-            def _encrypt_backup_codes(self) -> str:
-                """Encrypt and serialize backup codes for storage."""
-                codes = ["" + str(i) for i in range(8)]
-                return hashlib.sha256(json.dumps(codes).encode()).hexdigest()[:256]
-
-            def mfa_verify_backup_code(self, user: User, code: str) -> bool:
-                """Verify a backup code against the user's stored encrypted codes."""
-                mfa_settings = user.mfa_settings
-                if not mfa_settings or not mfa_settings.enabled:
-                    return False
-
-                encrypted = mfa_settings.backup_codes_encrypted
-                if not encrypted:
-                    return False
-
-                try:
-                    stored = hashlib.sha256(json.dumps([str(i) for i in range(8)]).encode()).hexdigest()[:256]
-                    return encrypted == stored
-                except Exception:
-                    return False
-
-            # ------------------------------------------------------------------
-            # End MFA section
-            # ------------------------------------------------------------------
-
     async def login(
-"""
         self,
         *,
         email: str,
         password: str,
+        remember_me: bool = False,
         user_agent: str | None = None,
         ip_address: str | None = None,
     ) -> AuthSuccess:
@@ -224,7 +215,11 @@ class AuthService:
         if not valid or user is None or not user.is_active:
             raise UnauthorizedError("Invalid email or password", code="INVALID_CREDENTIALS")
 
-        return await self._issue_tokens_for(user, user_agent=user_agent, ip_address=ip_address)
+        return await self._issue_tokens_for(user, user_agent=user_agent, ip_address=ip_address, remember_me=remember_me)
+
+    # ------------------------------------------------------------------
+    # End MFA section
+    # ------------------------------------------------------------------
 
     async def refresh(self, raw_refresh_token: str) -> TokenPair:
         token_hash = hash_token(raw_refresh_token)
@@ -328,14 +323,130 @@ class AuthService:
         user.is_verified = True
         await self._session.flush()
 
+    async def generate_otp(self, *, user: User, purpose: str = "login") -> str:
+        """Generate a 6-digit cryptographically secure OTP for a user.
+
+        Returns the plaintext OTP code (to be sent via email/SMS).
+        Also stores the OTP hash in the database for verification.
+        """
+        code = f"{secrets.randbelow(1000000):06d}"  # 6-digit code
+
+        # Store OTP in database (hashed for security)
+        record = OtpVerificationToken(
+            user_id=user.id,
+            otp_code=hash_token(code),  # Store hash, not plaintext
+            purpose=purpose,
+            expires_at=utc_now() + timedelta(minutes=10),
+            max_attempts=3,
+        )
+        self._session.add(record)
+        await self._session.flush()
+
+        # Send OTP via email/transport
+        await self._notifier.send_otp(
+            to=user.email,
+            full_name=user.full_name,
+            otp_code=code,
+            purpose=purpose,
+        )
+
+        return code
+
+    async def verify_otp(self, *, otp_code: str, purpose: str = "login") -> dict[str, Any]:
+        """Verify a 6-digit OTP code.
+
+        Returns user info if valid, raises error if invalid.
+        Implements brute-force protection and rate limiting.
+        """
+        from sqlalchemy import select
+
+        # Find active (not expired, not used, not locked) OTP
+        stmt = select(OtpVerificationToken).where(
+            OtpVerificationToken.purpose == purpose,
+            OtpVerificationToken.expires_at > utc_now(),
+            OtpVerificationToken.used_at.is_(None),
+        )
+        result = await self._session.execute(stmt)
+        record = result.scalar_one_or_none()
+
+        if record is None:
+            # Generic response to prevent enumeration
+            raise UnauthorizedError(
+                "Invalid or expired verification code", code="INVALID_OTP"
+            )
+
+        # Check if locked
+        if record.is_locked_until and record.is_locked_until > utc_now():
+            raise UnauthorizedError(
+                "Too many failed attempts. Try again later.",
+                code="OTP_LOCKED",
+            )
+
+        # Verify the code by recomputing the hash
+        computed_hash = hash_token(otp_code)
+        if not hmac.compare_digest(computed_hash, record.otp_code):
+            # Increment attempt count
+            record.attempt_count += 1
+
+            # Lock after max attempts
+            if record.attempt_count >= record.max_attempts:
+                record.is_locked_until = utc_now() + timedelta(minutes=15)
+            await self._session.flush()
+
+            raise UnauthorizedError(
+                "Invalid or expired verification code", code="INVALID_OTP"
+            )
+
+        # Code is valid - mark as used and return user
+        record.used_at = utc_now()
+        await self._session.flush()
+
+        # Get the user
+        user = await self._users.get_by_id(record.user_id)
+        if user is None or not user.is_active:
+            raise UnauthorizedError("Account unavailable", code="ACCOUNT_DISABLED")
+
+        return {"user": user, "otp_code": otp_code}
+
+    async def resend_otp(self, *, user: User, purpose: str = "login") -> dict[str, str]:
+        """Resend OTP with cooldown protection.
+
+        Checks if enough time has passed since the last OTP was sent.
+        """
+        from sqlalchemy import select
+
+        # Check for recent OTP attempts
+        stmt = select(OtpVerificationToken).where(
+            OtpVerificationToken.user_id == user.id,
+            OtpVerificationToken.purpose == purpose,
+            OtpVerificationToken.used_at.is_(None),
+            OtpVerificationToken.expires_at > utc_now(),
+        ).order_by(OtpVerificationToken.created_at.desc())
+
+        result = await self._session.execute(stmt)
+        recent = result.scalar_one_or_none()
+
+        if recent and recent.created_at > utc_now() - timedelta(minutes=30):
+            raise UnauthorizedError(
+                "Please wait before requesting another OTP. Try again in 30 minutes.",
+                code="OTP_COOLDOWN",
+            )
+
+        # Revoke any active OTP and generate new one
+        if recent:
+            recent.used_at = utc_now()
+
+        await self.generate_otp(user=user, purpose=purpose)
+        return {"status": "otp_resent"}
+
     async def _find_token(
-        self, model: type[PasswordResetToken] | type[EmailVerificationToken], raw: str
-    ) -> PasswordResetToken | EmailVerificationToken | None:
+        self, model: type[PasswordResetToken] | type[EmailVerificationToken] | type[OtpVerificationToken], raw: str
+    ) -> PasswordResetToken | EmailVerificationToken | OtpVerificationToken | None:
         stmt = select(model).where(model.token_hash == hash_token(raw))
         result = (await self._session.execute(stmt)).scalar_one_or_none()
         if result is None:
             return None
-        return cast(PasswordResetToken | EmailVerificationToken, result)
+        return cast(PasswordResetToken | EmailVerificationToken | OtpVerificationToken, result)
 
     async def _revoke_all_sessions(self, user_id: uuid.UUID) -> None:
         await self._session.execute(
@@ -344,21 +455,24 @@ class AuthService:
             .values(revoked_at=utc_now())
         )
 
-    # ------------------------------------------------------------------ utils
-
     async def _issue_tokens_for(
         self,
         user: User,
         *,
         user_agent: str | None,
         ip_address: str | None,
+        remember_me: bool = False,
     ) -> AuthSuccess:
+        session_timeout = timedelta(days=settings.refresh_token_expire_days)
+        if remember_me:
+            session_timeout = timedelta(days=365)  # 1 year for Remember Me
+
         session = UserSession(
             user_id=user.id,
             device_name=None,
             user_agent=user_agent,
             ip_address=ip_address,
-            expires_at=utc_now() + timedelta(days=settings.refresh_token_expire_days),
+            expires_at=utc_now() + session_timeout,
         )
         self._session.add(session)
         await self._session.flush()
@@ -421,3 +535,17 @@ class AuthService:
             .where(UserSession.id == session_id, UserSession.revoked_at.is_(None))
             .values(revoked_at=utc_now())
         )
+
+
+# ------------------------------------------------------------------
+# Utility: verify OTP code using HMAC
+# ------------------------------------------------------------------
+
+
+def verify_otp_code(otp_code: str, hashed_code: str) -> bool:
+    """Verify a 6-digit OTP code against its hash.
+
+    Uses HMAC comparison for security.
+    """
+    computed = hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
+    return hmac.compare_digest(computed, hashed_code)

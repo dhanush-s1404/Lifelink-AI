@@ -17,6 +17,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=200)
+    remember_me: bool = Field(default=False, description="Remember me for 365 days")
 
 
 class TokenPair(BaseModel):
@@ -72,3 +73,12 @@ class EmailVerificationRequest(BaseModel):
 
 class EmailVerificationConfirm(BaseModel):
     token: str = Field(min_length=16, max_length=512)
+
+
+class OtpVerifyRequest(BaseModel):
+    otp_code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    purpose: str = Field(default="login", max_length=50)
+
+
+class OtpResendRequest(BaseModel):
+    purpose: str = Field(default="login", max_length=50)

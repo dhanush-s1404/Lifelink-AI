@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -104,4 +104,30 @@ class EmailVerificationToken(BaseModel):
     __table_args__ = (
         Index("ix_email_verification_tokens_user_id", "user_id"),
         Index("ix_email_verification_tokens_expires", "expires_at"),
+    )
+
+
+class OtpVerificationToken(BaseModel):
+    """One-time 6-digit OTP verification token.
+
+    Used for phone verification, sensitive account actions, and OTP-based flows.
+    Short expiration (typically 5-15 minutes), single-use only.
+    """
+
+    __tablename__ = "otp_verification_tokens"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    otp_code: Mapped[str] = mapped_column(String(6), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(50), nullable=False, default="login")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    is_locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_otp_verification_tokens_user_id", "user_id"),
+        Index("ix_otp_verification_tokens_expires", "expires_at"),
+        Index("ix_otp_verification_tokens_purpose", "purpose"),
     )

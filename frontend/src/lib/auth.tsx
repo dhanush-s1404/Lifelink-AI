@@ -21,7 +21,7 @@ type AuthResult = {
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -55,8 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshUser]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const result = await apiPost<AuthResult>("/auth/login", { email, password });
+  const login = useCallback(async (email: string, password: string, rememberMe = false) => {
+    const result = await apiPost<AuthResult>("/auth/login", { email, password, remember_me: rememberMe });
     tokenManager.setTokens(result.tokens.access_token, result.tokens.refresh_token);
     setUser(result.user);
   }, []);

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
@@ -18,11 +18,22 @@ from app.auth.schemas import (
     RefreshRequest,
     RegisterRequest,
     TokenPair,
+    OtpVerifyRequest,
+    OtpResendRequest,
 )
 from app.auth.service import AuthNotifier, AuthService
+from app.ai.assistant import AIAssistant
+from app.core.security import utc_now
 from app.notifications.email import EmailTransport, get_email_transport
 from app.users.models import User
 from app.users.repository import UserRepository
+from app.security.middleware import RateLimiter
+
+# Rate limiter instances per endpoint
+login_limiter = RateLimiter(calls=5, period=60)      # 5 login attempts per minute
+register_limiter = RateLimiter(calls=3, period=60)   # 3 registration attempts per minute
+otp_limiter = RateLimiter(calls=3, period=60)        # 3 OTP attempts per minute
+email_limiter = RateLimiter(calls=5, period=60)     # 5 email verification attempts per minute
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -32,6 +43,15 @@ def _client_context(request: Request) -> dict:
         "user_agent": request.headers.get("User-Agent"),
         "ip_address": request.client.host if request.client else None,
     }
+
+
+def _check_rate_limit(limiter: RateLimiter, request: Request) -> None:
+    """Check rate limit and raise 429 if exceeded."""
+    if not limiter.allow(request):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many attempts. Please try again later.",
+        )
 
 
 def _service(session: AsyncSession, transport: EmailTransport) -> AuthService:
@@ -45,6 +65,7 @@ async def register(
     session: AsyncSession = Depends(get_session),
     transport: EmailTransport = Depends(get_email_transport),
 ) -> AuthSuccess:
+    _check_rate_limit(register_limiter, request)
     service = _service(session, transport)
     return await service.register(
         email=body.email,
@@ -60,10 +81,12 @@ async def login(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> AuthSuccess:
+    _check_rate_limit(login_limiter, request)
     service = AuthService(session, UserRepository(session))
     return await service.login(
         email=body.email,
         password=body.password,
+        remember_me=body.remember_me if hasattr(body, "remember_me") else False,
         **_client_context(request),
     )
 
@@ -96,6 +119,7 @@ async def request_password_reset(
 
     Always returns 202 regardless of whether the email exists (anti-enumeration).
     """
+    _check_rate_limit(email_limiter, request)
     service = _service(session, transport)
     await service.request_password_reset(email=body.email)
     return {"status": "request_received"}
@@ -129,6 +153,67 @@ async def confirm_email_verification(
 ) -> None:
     service = AuthService(session, UserRepository(session))
     await service.confirm_email_verification(token=body.token)
+
+
+@router.post("/otp/generate", response_model=AuthSuccess)
+async def generate_otp(
+    body: OtpResendRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> AuthSuccess:
+    _check_rate_limit(otp_limiter, request)
+    service = _service(session, transport)
+    code = await service.generate_otp(user=user, purpose=body.purpose)
+    return AuthSuccess(
+        user={
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role.value,
+            "is_active": user.is_active,
+            "is_verified": user.is_verified,
+        },
+        tokens=None,
+    )
+
+
+@router.post("/otp/verify", response_model=AuthSuccess)
+async def verify_otp(
+    body: OtpVerifyRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> AuthSuccess:
+    _check_rate_limit(otp_limiter, request)
+    service = AuthService(session, UserRepository(session))
+    result = await service.verify_otp(otp_code=body.otp_code, purpose=body.purpose)
+    user = result["user"]
+    tokens, _ = await service._create_token_pair(user, None)
+    return AuthSuccess(
+        user={
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role.value,
+            "is_active": user.is_active,
+            "is_verified": user.is_verified,
+        },
+        tokens=tokens,
+    )
+
+
+@router.post("/otp/resend", response_model=dict[str, str])
+async def resend_otp(
+    body: OtpResendRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    _check_rate_limit(otp_limiter, request)
+    service = AuthService(session, UserRepository(session))
+    result = await service.resend_otp(user=user, purpose=body.purpose)
+    return result
 
 
 @router.get("/sessions")
