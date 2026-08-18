@@ -16,6 +16,11 @@ async def register_and_login(client, email: str, name: str = "User") -> dict:
     return {"access": login.json()["tokens"]["access_token"], "email": email}
 
 
+async def e2e_auth(client, email: str) -> dict:
+    """Register + login a user and return their session dict (e2e helper)."""
+    return await register_and_login(client, email)
+
+
 def auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 

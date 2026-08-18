@@ -1,162 +1,178 @@
-"""E2E tests for emergency flow: activation, contact participation, vault release."""
+"""E2E tests for the emergency flow: activation, contact participation, vault release.
+
+These exercise the real HTTP API end-to-end: owner -> trusted contact ->
+activation -> escalation -> vault release -> document download.
+"""
 
 from __future__ import annotations
 
-import pytest
-import uuid
+from datetime import timedelta
 
-from tests.test_documents import auth
+from app.core.security import utc_now
+from app.emergency.models import Emergency
 
-pytestmark = pytest.mark.asyncio
+from tests.test_documents import auth, e2e_auth
 
 
-async def test_emergency_activation_flow(client, auth) -> None:
-    """Full emergency activation: activator → contacts → vault release."""
-    owner = await auth(client, "owner@example.com")
-    contact = await auth(client, "contact@example.com")
+async def user_id(client, token: str) -> str:
+    me = await client.get("/api/v1/users/me", headers=auth(token))
+    assert me.status_code == 200
+    return me.json()["id"]
 
-    # Create vault + item
+
+async def make_active_contact(
+    client, owner_token: str, contact_email: str, *, can_view_vaults: bool = True
+) -> str:
+    """Owner invites the contact and the contact accepts. Returns contact access token."""
+    contact = await e2e_auth(client, contact_email)
+    invite = await client.post(
+        "/api/v1/contacts",
+        json={
+            "email": contact_email,
+            "can_view_vaults": can_view_vaults,
+            "can_activate_emergency": True,
+            "access_grace_days": 1,
+        },
+        headers=auth(owner_token),
+    )
+    assert invite.status_code == 201
+    accept = await client.post(
+        f"/api/v1/contacts/{invite.json()['id']}/accept",
+        headers=auth(contact["access"]),
+    )
+    assert accept.status_code == 200
+    return contact["access"]
+
+
+async def setup_vault_with_document(client, token: str) -> dict:
+    from io import BytesIO
+
     vault = await client.post(
-        "/api/v1/vaults", json={"name": "Test Vault"}, headers=auth(owner["access"]),
+        "/api/v1/vaults", json={"name": "Test Vault"}, headers=auth(token),
     )
     assert vault.status_code == 201
     vault_id = vault.json()["id"]
 
     item = await client.post(
-        f"/api/v1/vaults/{vault.json()['id']}/items",
+        f"/api/v1/vaults/{vault_id}/items",
         json={"item_type": "document", "title": "Important", "content": {"notes": "x"}},
-        headers=auth(owner["access"]),
+        headers=auth(token),
     )
     assert item.status_code == 201
     item_id = item.json()["id"]
 
-    # Upload a document
-    from io import BytesIO
-    doc_upload = await client.post(
-        f"/api/v1/vaults/{vault.json()['id']}/items/{item_id}/documents",
-        files={"file": ("secret.pdf", b"SECRET-PDF", "application/pdf")},
-        headers=auth(owner["access"]),
+    doc = await client.post(
+        f"/api/v1/vaults/{vault_id}/items/{item_id}/documents",
+        files={"file": ("secret.pdf", BytesIO(b"SECRET-PDF"), "application/pdf")},
+        headers=auth(token),
     )
-    assert doc_upload.status_code == 201
-    doc_id = doc_upload.json()["document"]["id"]
+    assert doc.status_code == 201
+    doc_id = doc.json()["document"]["id"]
+    return {"vault_id": vault_id, "item_id": item_id, "doc_id": doc_id}
 
-    # Activate emergency
+
+async def test_emergency_activation_flow(client, db_session) -> None:
+    """Full emergency lifecycle: activation -> escalation -> release -> read access."""
+    owner = await e2e_auth(client, "owner@example.com")
+    contact_token = await make_active_contact(
+        client, owner["access"], "contact@example.com", can_view_vaults=False
+    )
+    owner_id = await user_id(client, owner["access"])
+    ctx = await setup_vault_with_document(client, owner["access"])
+
+    # Contact cannot read before any emergency is active.
+    denied = await client.get(
+        f"/api/v1/vaults/{ctx['vault_id']}/items/{ctx['item_id']}/documents/{ctx['doc_id']}/download",
+        headers=auth(contact_token),
+    )
+    assert denied.status_code == 403
+
+    # Trusted contact raises an emergency for the owner.
     emergency = await client.post(
-        f"/api/v1/emergency/activate",
-        json={"owner_id": owner["access"], "reason": "Medical emergency"},
-        headers=auth(owner["access"]),
+        "/api/v1/emergencies",
+        json={"owner_id": owner_id, "reason": "Medical emergency"},
+        headers=auth(contact_token),
     )
     assert emergency.status_code == 201
     emergency_id = emergency.json()["id"]
 
-    # Check emergency is active
-    status = await client.get(
-        f"/api/v1/emergency/{emergency_id}/status",
-        headers=auth(owner["access"]),
-    )
-    assert status.status_code == 200
-    assert status.json()["is_active"] is True
+    # Owner sees the pending emergency.
+    as_owner = await client.get("/api/v1/emergencies", headers=auth(owner["access"]))
+    assert as_owner.status_code == 200
+    assert as_owner.json()[0]["status"] == "pending"
 
-    # Contact can see vault items (with can_view_vaults flag implied by being contact)
-    # List documents - contact should have read access via emergency
-    listing = await client.get(
-        f"/api/v1/vaults/{vault_id}/items/{item_id}/documents",
-        headers=auth(contact["access"]),
+    # Vault release is forbidden before the grace period elapses.
+    before = await client.get(
+        f"/api/v1/emergencies/{emergency_id}/release", headers=auth(contact_token)
     )
-    # Contact with proper flags should be able to read
-    assert listing.status_code in (200, 403)  # 403 if no can_view_vaults flag
+    assert before.status_code == 403
+    assert before.json()["error"]["code"] == "EMERGENCY_NOT_ESCALATED"
 
-    # Release vault
-    release = await client.post(
-        f"/api/v1/emergency/{emergency_id}/release",
-        headers=auth(owner["access"]),
+    # Force escalation by pushing the grace deadline into the past.
+    emergency_row = await db_session.get(Emergency, emergency_id)
+    assert emergency_row is not None
+    emergency_row.grace_end_at = utc_now() - timedelta(minutes=1)
+    await db_session.commit()
+
+    # Release now returns the owner's vault items to the activating contact.
+    release = await client.get(
+        f"/api/v1/emergencies/{emergency_id}/release", headers=auth(contact_token)
     )
     assert release.status_code == 200
+    assert len(release.json()) == 1
+    assert release.json()[0]["title"] == "Important"
 
-    # Vault should now be accessible
-    listing = await client.get(
-        f"/api/v1/vaults/{vault_id}/items/{item_id}/documents",
-        headers=auth(contact["access"]),
-    )
-    # After release, contact should read
-    assert listing.status_code in (200, 403)
-
-
-async def test_emergency_contact_no_read_without_flag(client, auth) -> None:
-    """Contact without can_view_vaults flag cannot read vault items."""
-    owner = await auth(client, "owner@example.com")
-    contact = await auth(client, "contact_no_access@example.com")
-
-    vault = await client.post(
-        "/api/v1/vaults", json={"name": "Test Vault"}, headers=auth(owner["access"]),
-    )
-    assert vault.status_code == 201
-    vault_id = vault.json()["id"]
-
-    item = await client.post(
-        f"/api/v1/vaults/{vault.json()['id']}/items",
-        json={"item_type": "document", "title": "Important", "content": {"notes": "x"}},
-        headers=auth(owner["access"]),
-    )
-    assert item.status_code == 201
-    item_id = item.json()["id"]
-
-    # Upload a document
-    from io import BytesIO
-    doc_upload = await client.post(
-        f"/api/v1/vaults/{vault.json()['id']}/items/{item_id}/documents",
-        files={"file": ("secret.pdf", b"SECRET-PDF", "application/pdf")},
-        headers=auth(owner["access"]),
-    )
-    assert doc_upload.status_code == 201
-    doc_id = doc_upload.json()["document"]["id"]
-
-    # Contact without read flag cannot download
+    # Contact can now download the document.
     download = await client.get(
-        f"/api/v1/vaults/{vault_id}/items/{item_id}/documents/{doc_id}/download",
-        headers=auth(contact["access"]),
+        f"/api/v1/vaults/{ctx['vault_id']}/items/{ctx['item_id']}/documents/{ctx['doc_id']}/download",
+        headers=auth(contact_token),
+    )
+    assert download.status_code == 200
+    assert download.content == b"SECRET-PDF"
+
+
+async def test_emergency_contact_no_read_without_flag(client) -> None:
+    """A contact without the can_view_vaults flag cannot read vault items."""
+    owner = await e2e_auth(client, "owner@example.com")
+    contact_token = await make_active_contact(
+        client, owner["access"], "contact_no_access@example.com", can_view_vaults=False
+    )
+    ctx = await setup_vault_with_document(client, owner["access"])
+
+    download = await client.get(
+        f"/api/v1/vaults/{ctx['vault_id']}/items/{ctx['item_id']}/documents/{ctx['doc_id']}/download",
+        headers=auth(contact_token),
     )
     assert download.status_code == 403
-    assert download.json()["error"]["code"] == "DOCUMENT_ACCESS_DENIED"
+    assert download.json()["error"]["code"] == "ITEM_ACCESS_DENIED"
 
 
-async def test_multiple_contacts_activation(client, auth) -> None:
-    """Multiple contacts can participate in emergency activation."""
-    owner = await auth(client, "owner@example.com")
-    contact1 = await auth(client, "contact1@example.com")
-    contact2 = await auth(client, "contact2@example.com")
+async def test_multiple_contacts_activation(client) -> None:
+    """Multiple contacts can participate; only one active emergency per owner."""
+    owner = await e2e_auth(client, "owner@example.com")
+    contact1 = await make_active_contact(client, owner["access"], "contact1@example.com")
+    contact2 = await make_active_contact(client, owner["access"], "contact2@example.com")
+    owner_id = await user_id(client, owner["access"])
 
-    vault = await client.post(
-        "/api/v1/vaults", json={"name": "Test Vault"}, headers=auth(owner["access"]),
-    )
-    assert vault.status_code == 201
-    vault_id = vault.json()["id"]
-
-    item = await client.post(
-        f"/api/v1/vaults/{vault.json()['id']}/items",
-        json={"item_type": "document", "title": "Important", "content": {"notes": "x"}},
-        headers=auth(owner["access"]),
-    )
-    assert item.status_code == 201
-    item_id = item.json()["id"]
-
-    # Activate emergency
+    # Contact 1 activates.
     emergency = await client.post(
-        f"/api/v1/emergency/activate",
-        json={"owner_id": owner["access"], "reason": "Test emergency"},
-        headers=auth(owner["access"]),
+        "/api/v1/emergencies",
+        json={"owner_id": owner_id, "reason": "Test emergency"},
+        headers=auth(contact1),
     )
     assert emergency.status_code == 201
     emergency_id = emergency.json()["id"]
 
-    # Both contacts should be able to check status
-    status1 = await client.get(
-        f"/api/v1/emergency/{emergency_id}/status",
-        headers=auth(contact1["access"]),
+    # Contact 2 trying to activate again conflicts.
+    dup = await client.post(
+        "/api/v1/emergencies",
+        json={"owner_id": owner_id, "reason": "Second attempt"},
+        headers=auth(contact2),
     )
-    status2 = await client.get(
-        f"/api/v1/emergency/{emergency_id}/status",
-        headers=auth(contact2["access"]),
-    )
+    assert dup.status_code == 409
+    assert dup.json()["error"]["code"] == "EMERGENCY_ALREADY_ACTIVE"
+
+    # The activating contact can view the emergency detail.
+    status1 = await client.get(f"/api/v1/emergencies/{emergency_id}", headers=auth(contact1))
     assert status1.status_code == 200
-    assert status2.status_code == 200
+    assert status1.json()["status"] == "pending"

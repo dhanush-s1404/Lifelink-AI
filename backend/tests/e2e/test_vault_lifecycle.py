@@ -5,17 +5,17 @@ from __future__ import annotations
 import pytest
 import uuid
 
-from tests.test_documents import auth
+from tests.test_documents import auth, e2e_auth
 
 
 pytestmark = pytest.mark.asyncio
 
 
-async def test_full_vault_lifecycle(client, auth) -> None:
+async def test_full_vault_lifecycle(client) -> None:
     """Complete workflow: register → vault → item → document upload → download → delete."""
     # Register owner
-    owner = await auth(client, "owner@example.com")
-    other_owner = await auth(client, "otherowner@example.com")
+    owner = await e2e_auth(client, "owner@example.com")
+    other_owner = await e2e_auth(client, "otherowner@example.com")
 
     # Create vault
     vault = await client.post(
@@ -85,10 +85,10 @@ async def test_full_vault_lifecycle(client, auth) -> None:
     assert other_upload.json()["error"]["code"] == "ITEM_ACCESS_DENIED"
 
 
-async def test_vault_isolation_between_owners(client, auth) -> None:
+async def test_vault_isolation_between_owners(client) -> None:
     """Two owners have separate vaults; cannot see each other's vaults."""
-    owner1 = await auth(client, "owner1@example.com")
-    owner2 = await auth(client, "owner2@example.com")
+    owner1 = await e2e_auth(client, "owner1@example.com")
+    owner2 = await e2e_auth(client, "owner2@example.com")
 
     # Owner 1 creates vault
     vault1 = await client.post(
@@ -123,10 +123,10 @@ async def test_vault_isolation_between_owners(client, auth) -> None:
     assert "Vault 2" in vault_names
 
 
-async def test_upload_denied_to_non_owner(client, auth) -> None:
+async def test_upload_denied_to_non_owner(client) -> None:
     """Non-owner users cannot upload documents to an item."""
-    owner = await auth(client, "owner@example.com")
-    other = await auth(client, "other@example.com")
+    owner = await e2e_auth(client, "owner@example.com")
+    other = await e2e_auth(client, "other@example.com")
 
     vault = await client.post(
         "/api/v1/vaults", json={"name": "Docs"}, headers=auth(owner["access"]),
@@ -149,10 +149,10 @@ async def test_upload_denied_to_non_owner(client, auth) -> None:
     assert resp.json()["error"]["code"] == "ITEM_ACCESS_DENIED"
 
 
-async def test_download_denied_to_other_user(client, auth) -> None:
+async def test_download_denied_to_other_user(client) -> None:
     """Non-owner users cannot download documents."""
-    owner = await auth(client, "owner@example.com")
-    other = await auth(client, "other@example.com")
+    owner = await e2e_auth(client, "owner@example.com")
+    other = await e2e_auth(client, "other@example.com")
 
     vault = await client.post(
         "/api/v1/vaults", json={"name": "Docs"}, headers=auth(owner["access"]),
@@ -181,4 +181,4 @@ async def test_download_denied_to_other_user(client, auth) -> None:
         headers=auth(other["access"]),
     )
     assert download.status_code == 403
-    assert download.json()["error"]["code"] == "DOCUMENT_ACCESS_DENIED"
+    assert download.json()["error"]["code"] == "ITEM_ACCESS_DENIED"

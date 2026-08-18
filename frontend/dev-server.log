@@ -6,51 +6,58 @@
   - Local:        http://localhost:3000
 
  ✓ Starting...
- ✓ Ready in 5.3s
+ ✓ Ready in 9.9s
  ○ Compiling / ...
- ✓ Compiled / in 9s (617 modules)
- GET / 200 in 9736ms
- ✓ Compiled in 1225ms (308 modules)
- GET / 200 in 74ms
- ○ Compiling /auth/login ...
- ✓ Compiled /auth/login in 1914ms (663 modules)
- GET /auth/login 200 in 2224ms
- ○ Compiling /auth/register ...
- ✓ Compiled /auth/register in 552ms (669 modules)
- GET /auth/register 200 in 770ms
- ○ Compiling /auth/forgot-password ...
- ✓ Compiled /auth/forgot-password in 1129ms (675 modules)
- GET /auth/forgot-password 200 in 1329ms
+ ✓ Compiled / in 8.6s (617 modules)
+ GET / 200 in 9185ms
+ ✓ Compiled in 872ms (308 modules)
+ ✓ Compiled in 215ms (294 modules)
+ GET / 200 in 65ms
+ ✓ Compiled /_not-found in 492ms (606 modules)
+ GET /login 404 in 878ms
+ GET /register 404 in 29ms
  ○ Compiling /auth/otp-verify ...
- ✓ Compiled /auth/otp-verify in 968ms (685 modules)
- GET /auth/otp-verify 200 in 1146ms
+ ✓ Compiled /auth/otp-verify in 781ms (636 modules)
+ GET /auth/otp-verify 200 in 980ms
  ○ Compiling /dashboard ...
- ✓ Compiled /dashboard in 1101ms (712 modules)
- GET /dashboard 200 in 1391ms
+ ✓ Compiled /dashboard in 941ms (684 modules)
+ GET /dashboard 200 in 1153ms
  ○ Compiling /vault ...
- ✓ Compiled /vault in 905ms (728 modules)
- GET /vault 200 in 1128ms
+ ✓ Compiled /vault in 621ms (700 modules)
+ GET /vault 200 in 807ms
  ○ Compiling /trusted-contacts ...
- ✓ Compiled /trusted-contacts in 921ms (742 modules)
- GET /trusted-contacts 200 in 1136ms
+ ✓ Compiled /trusted-contacts in 591ms (714 modules)
+ GET /trusted-contacts 200 in 763ms
  ○ Compiling /emergency ...
- ✓ Compiled /emergency in 1206ms (754 modules)
- GET /emergency 200 in 1354ms
+ ✓ Compiled /emergency in 903ms (726 modules)
+ GET /emergency 200 in 1034ms
  ○ Compiling /ai ...
- ✓ Compiled /ai in 1178ms (762 modules)
- GET /ai 200 in 1311ms
+ ✓ Compiled /ai in 874ms (734 modules)
+ GET /ai 200 in 1007ms
  ○ Compiling /settings ...
- ✓ Compiled /settings in 1258ms (772 modules)
- GET /settings 200 in 1417ms
+ ✓ Compiled /settings in 872ms (744 modules)
+ GET /settings 200 in 1011ms
  ○ Compiling /security ...
- ✓ Compiled /security in 888ms (784 modules)
- GET /security 200 in 1012ms
+ ✓ Compiled /security in 732ms (756 modules)
+ GET /security 200 in 886ms
  ○ Compiling /profile ...
- ✓ Compiled /profile in 1150ms (796 modules)
- GET /profile 200 in 1326ms
+ ✓ Compiled /profile in 687ms (768 modules)
+ GET /profile 200 in 850ms
  ○ Compiling /documents ...
- ✓ Compiled /documents in 837ms (806 modules)
- GET /documents 200 in 986ms
+ ✓ Compiled /documents in 797ms (778 modules)
+ GET /documents 200 in 934ms
  ○ Compiling /notifications ...
- ✓ Compiled /notifications in 1035ms (816 modules)
- GET /notifications 200 in 1180ms
+ ✓ Compiled /notifications in 672ms (788 modules)
+ GET /notifications 200 in 873ms
+ ○ Compiling /vault/[id] ...
+ ✓ Compiled /vault/[id] in 1316ms (814 modules)
+ GET /vault/00000000-0000-0000-0000-000000000000 200 in 2471ms
+ ○ Compiling /auth/login ...
+ ✓ Compiled /auth/login in 1398ms (723 modules)
+ GET /auth/login 200 in 1702ms
+ ○ Compiling /auth/register ...
+ ✓ Compiled /auth/register in 605ms (729 modules)
+ GET /auth/register 200 in 801ms
+ ○ Compiling /auth/forgot-password ...
+ ✓ Compiled /auth/forgot-password in 622ms (735 modules)
+ GET /auth/forgot-password 200 in 739ms

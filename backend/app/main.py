@@ -15,7 +15,6 @@ from app.core.exceptions import register_exception_handlers
 from app.monitoring import (
     setup_otel,
     CorrelationIDMiddleware,
-    create_health_router,
     get_structured_logger,
     HealthCheckResult,
     configure_logging,
@@ -120,19 +119,15 @@ def redis_health_check() -> HealthCheckResult:
         return HealthCheckResult(status="unhealthy", details={"redis": str(e)})
 
 
-checker_funcs: Dict[str, Callable[[], HealthCheckResult]] = {
-    "database": db_health_check,
-    "cache": redis_health_check,
-}
+app.include_router(api_router)
 
-health_router = create_health_router(checker_funcs)
-app.include_router(health_router)
+# NOTE: the standalone /health, /ready, /live endpoints below are the
+# canonical health surface; the monitoring health_router is intentionally not
+# mounted to avoid shadowing /health.
 
 # ------------------------------------------------------------------
 # API router
 # ------------------------------------------------------------------
-
-app.include_router(api_router)
 
 # ------------------------------------------------------------------
 # Exception handlers

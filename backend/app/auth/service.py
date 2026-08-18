@@ -13,6 +13,7 @@ import hmac
 import secrets
 
 from datetime import timedelta
+from typing import Any, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -240,7 +241,7 @@ class AuthService:
         if existing is not None:
             raise ConflictError(
                 "An account with this email already exists",
-                code="EMAIL_ALREADY_REGISTERED",
+                code="EMAIL_TAKEN",
             )
 
         user = await self._users.create(

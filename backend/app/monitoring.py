@@ -170,17 +170,19 @@ def setup_otel(
 
 
 class CorrelationIDMiddleware(BaseHTTPMiddleware):
-    """Adds and echoes a correlation ID on every request."""
+    """Adds and echoes correlation IDs on every request."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         correlation_id = request.headers.get("X-Correlation-ID")
         if not correlation_id:
-            correlation_id = str(uuid.uuid4())
+            correlation_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
 
         request.state.correlation_id = correlation_id
 
         response = await call_next(request)
         response.headers["X-Correlation-ID"] = correlation_id
+        if "X-Request-ID" not in response.headers:
+            response.headers["X-Request-ID"] = correlation_id
 
         logger.info(
             "request",
