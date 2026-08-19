@@ -24,7 +24,7 @@ export default function NotificationsPage() {
               There are no notifications waiting for you. Emergency activity, password changes,
               and security events are delivered to your inbox.
             </p>
-            <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+            <div className="mt-4 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <Mail className="h-4 w-4" aria-hidden="true" />
               Delivered via email
             </div>

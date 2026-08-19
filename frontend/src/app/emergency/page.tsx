@@ -28,10 +28,10 @@ function formatDateTime(value: string): string {
 
 function StatusBadge({ status }: { status: Emergency["status"] }) {
   const map: Record<Emergency["status"], { label: string; cls: string }> = {
-    pending: { label: "Pending", cls: "bg-amber-50 text-amber-700" },
-    escalated: { label: "Escalated", cls: "bg-red-50 text-red-700" },
-    resolved: { label: "Resolved", cls: "bg-emerald-50 text-emerald-700" },
-    cancelled: { label: "Cancelled", cls: "bg-slate-100 text-slate-600" },
+    pending: { label: "Pending", cls: "bg-amber-50 dark:bg-amber-950/40 text-amber-700" },
+    escalated: { label: "Escalated", cls: "bg-red-50 dark:bg-red-950/40 text-red-700" },
+    resolved: { label: "Resolved", cls: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700" },
+    cancelled: { label: "Cancelled", cls: "bg-slate-100 dark:bg-night-800 text-slate-600 dark:text-slate-400" },
   };
   const { label, cls } = map[status];
   return (
@@ -71,14 +71,14 @@ function EmergencyCard({
       <CardBody>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">
               {emergency.contact_name ?? emergency.contact_email ?? "Unknown contact"}
-              <span className="font-normal text-slate-400"> raised an emergency</span>
+              <span className="font-normal text-slate-400 dark:text-slate-500"> raised an emergency</span>
             </p>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               {formatDateTime(emergency.activated_at)} · grace ends {formatDateTime(emergency.grace_end_at)}
             </p>
-            {emergency.reason && <p className="mt-1 text-sm text-slate-700">“{emergency.reason}”</p>}
+            {emergency.reason && <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">“{emergency.reason}”</p>}
           </div>
           <StatusBadge status={emergency.status} />
         </div>
@@ -107,20 +107,20 @@ function EmergencyCard({
         )}
 
         {released && (
-          <div className="mt-4 rounded-lg bg-slate-50 p-4">
-            <p className="text-sm font-medium text-slate-900">
+          <div className="mt-4 rounded-lg bg-slate-50 dark:bg-night-950 p-4">
+            <p className="text-sm font-medium text-slate-900 dark:text-white">
               Released vault contents ({released.length} items)
             </p>
             {released.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-500">No items in the vault.</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No items in the vault.</p>
             ) : (
               <ul className="mt-3 space-y-3">
                 {released.map((item) => (
-                  <li key={item.item_id} className="border-t border-slate-200 pt-3">
-                    <p className="text-sm font-medium text-slate-900">
+                  <li key={item.item_id} className="border-t border-slate-200 dark:border-slate-800 pt-3">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
                       {item.title} · {item.vault_name}
                     </p>
-                    <pre className="mt-1 overflow-x-auto rounded bg-white p-2 font-mono text-xs text-slate-700">
+                    <pre className="mt-1 overflow-x-auto rounded bg-white dark:bg-night-900 p-2 font-mono text-xs text-slate-700 dark:text-slate-200">
                       {JSON.stringify(item.content, null, 2)}
                     </pre>
                   </li>
@@ -165,7 +165,7 @@ function ActivateForm() {
       </CardHeader>
       <CardBody>
         {activatable.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             No owners have granted you emergency access yet. They must add you as an active
             trusted contact with emergency permission first.
           </p>
@@ -178,11 +178,11 @@ function ActivateForm() {
             }}
           >
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-slate-700">For owner</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">For owner</span>
               <select
                 value={ownerId}
                 onChange={(e) => setOwnerId(e.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
+                className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-night-900 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
               >
                 <option value="">Select an owner…</option>
                 {activatable.map((c) => (
@@ -193,12 +193,12 @@ function ActivateForm() {
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-slate-700">Reason (optional)</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Reason (optional)</span>
               <input
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="e.g. No response since Monday"
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
+                className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-night-900 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
               />
             </label>
             <div>
@@ -255,8 +255,8 @@ export default function EmergencyPage() {
     <RequireAuth>
       <AppShell>
         <div className="mx-auto max-w-5xl p-8">
-          <h1 className="text-2xl font-bold text-slate-900">Emergency</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Emergency</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             A trusted contact can raise an emergency. If you don&apos;t confirm within the grace
             period, they get read access to your vault.
           </p>
@@ -264,11 +264,11 @@ export default function EmergencyPage() {
           <div className="mt-6 grid gap-6 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-2">
               <div>
-                <h2 className="text-base font-semibold text-slate-900">About you</h2>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">About you</h2>
                 {isLoading ? (
                   <div className="mt-3 space-y-3">
                     {[1, 2].map((i) => (
-                      <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100" />
+                      <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100 dark:bg-night-800" />
                     ))}
                   </div>
                 ) : emergencies && emergencies.length > 0 ? (
@@ -283,14 +283,14 @@ export default function EmergencyPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-slate-500">
+                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
                     No emergencies have been raised for you.
                   </p>
                 )}
               </div>
 
               <div>
-                <h2 className="text-base font-semibold text-slate-900">You raised</h2>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">You raised</h2>
                 {activated && activated.length > 0 ? (
                   <div className="mt-3 space-y-3">
                     {activated.map((e) => (
@@ -298,7 +298,7 @@ export default function EmergencyPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-slate-500">
+                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
                     You haven&apos;t raised any emergencies.
                   </p>
                 )}

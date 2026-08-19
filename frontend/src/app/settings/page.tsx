@@ -39,7 +39,7 @@ function ProfileForm({ onSaved }: { onSaved: () => void }) {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-brand-600" aria-hidden="true" />
+          <User className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
           <CardTitle>Profile</CardTitle>
         </div>
       </CardHeader>
@@ -52,8 +52,8 @@ function ProfileForm({ onSaved }: { onSaved: () => void }) {
             onChange={(e) => setFullName(e.target.value)}
           />
           <div>
-            <span className="text-sm font-medium text-slate-700">Email</span>
-            <p className="mt-1 text-sm text-slate-500">{user?.email}</p>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{user?.email}</p>
           </div>
           <div>
             <Button type="submit" loading={submitting} disabled={fullName.trim() === (user?.full_name ?? "")}>
@@ -107,7 +107,7 @@ function PasswordForm() {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-brand-600" aria-hidden="true" />
+          <KeyRound className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
           <CardTitle>Change password</CardTitle>
         </div>
       </CardHeader>

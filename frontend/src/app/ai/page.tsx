@@ -51,8 +51,8 @@ export default function AiAssistantPage() {
       <AppShell>
         <div className="page-shell">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50">
-              <Sparkles className="h-5 w-5 text-brand-700" aria-hidden="true" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-900/40">
+              <Sparkles className="h-5 w-5 text-brand-700 dark:text-brand-300" aria-hidden="true" />
             </span>
             <div>
               <h1 className="page-heading">AI assistant</h1>
@@ -68,7 +68,7 @@ export default function AiAssistantPage() {
               {messages.length === 0 && (
                 <div className="flex h-full flex-col items-center justify-center text-center">
                   <Sparkles className="h-8 w-8 text-brand-200" aria-hidden="true" />
-                  <p className="mt-3 text-sm text-slate-500">
+                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
                     Start a conversation. For example:
                   </p>
                   <div className="mt-4 flex flex-col gap-2">
@@ -76,7 +76,7 @@ export default function AiAssistantPage() {
                       <button
                         key={s}
                         onClick={() => sendMessage(s)}
-                        className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-brand-300 hover:bg-brand-50"
+                        className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-night-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 transition hover:border-brand-300 hover:bg-brand-50"
                       >
                         {s}
                       </button>
@@ -92,7 +92,7 @@ export default function AiAssistantPage() {
                       "max-w-[80%] whitespace-pre-wrap rounded-lg px-4 py-2.5 text-sm",
                       msg.role === "user"
                         ? "bg-brand-600 text-white"
-                        : "border border-slate-200 bg-slate-50 text-slate-900"
+                        : "border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-night-950 text-slate-900 dark:text-white"
                     )}
                   >
                     {msg.content}
@@ -102,10 +102,10 @@ export default function AiAssistantPage() {
 
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:100ms]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:200ms]" />
+                  <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-night-950 px-4 py-2.5">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 dark:bg-slate-500" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 dark:bg-slate-500 [animation-delay:100ms]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 dark:bg-slate-500 [animation-delay:200ms]" />
                   </div>
                 </div>
               )}
@@ -121,7 +121,7 @@ export default function AiAssistantPage() {
             </div>
 
             <form
-              className="flex items-center gap-3 border-t border-slate-200 p-4"
+              className="flex items-center gap-3 border-t border-slate-200 dark:border-slate-800 p-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 sendMessage(input);
@@ -133,7 +133,7 @@ export default function AiAssistantPage() {
                 placeholder="Ask LifeLink AI…"
                 disabled={isTyping}
                 aria-label="Message"
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:opacity-60"
+                className="flex-1 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2.5 text-sm text-slate-900 dark:text-white shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:opacity-60"
               />
               <button
                 type="submit"

@@ -14,8 +14,8 @@ export default function DocumentsPage() {
       <AppShell>
         <div className="page-shell">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50">
-              <FileText className="h-5 w-5 text-brand-700" aria-hidden="true" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-900/40">
+              <FileText className="h-5 w-5 text-brand-700 dark:text-brand-300" aria-hidden="true" />
             </span>
             <div>
               <h1 className="page-heading">Documents</h1>
@@ -32,9 +32,9 @@ export default function DocumentsPage() {
                 <CardTitle>How documents work</CardTitle>
               </CardHeader>
               <CardBody>
-                <ul className="space-y-3 text-sm text-slate-600">
+                <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
                   <li className="flex gap-2">
-                    <FolderLock className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+                    <FolderLock className="mt-0.5 h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" aria-hidden="true" />
                     Documents are attached to vault items (notes, records, legal files).
                   </li>
                   <li className="flex gap-2">
@@ -42,7 +42,7 @@ export default function DocumentsPage() {
                     Uploaded files are encrypted before storage.
                   </li>
                   <li className="flex gap-2">
-                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                     Only you — and trusted contacts during an emergency — can download them.
                   </li>
                 </ul>
@@ -54,7 +54,7 @@ export default function DocumentsPage() {
                 <CardTitle>Upload a document</CardTitle>
               </CardHeader>
               <CardBody>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   Open a vault, choose an item, and reveal it to upload files alongside its
                   content.
                 </p>

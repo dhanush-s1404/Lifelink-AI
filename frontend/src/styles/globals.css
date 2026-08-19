@@ -17,16 +17,17 @@
   }
 
   * {
-    @apply border-slate-200;
+    @apply border-slate-200 dark:border-slate-700;
   }
 
   html {
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
+    color-scheme: light dark;
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-night-950 dark:text-slate-100;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
@@ -45,11 +46,11 @@
   h4,
   h5,
   h6 {
-    @apply font-semibold tracking-tight text-slate-900;
+    @apply font-semibold tracking-tight text-slate-900 dark:text-white;
   }
 
   a {
-    @apply text-brand-600 hover:text-brand-700;
+    @apply text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300;
   }
 }
 
@@ -60,33 +61,33 @@
   }
 
   .page-heading {
-    @apply text-2xl font-bold text-slate-900;
+    @apply text-2xl font-bold text-slate-900 dark:text-white;
   }
 
   .page-subheading {
-    @apply mt-1 text-sm text-slate-600;
+    @apply mt-1 text-sm text-slate-600 dark:text-slate-400;
   }
 
   /* Consistent card container */
   .surface {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-night-900;
   }
 
   /* Empty-state placeholder */
   .empty-state {
-    @apply flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center;
+    @apply flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center dark:border-slate-700 dark:bg-night-900;
   }
 
   .empty-state-icon {
-    @apply h-10 w-10 text-slate-300;
+    @apply h-10 w-10 text-slate-300 dark:text-slate-600;
   }
 
   .empty-state-title {
-    @apply mt-4 text-sm font-medium text-slate-700;
+    @apply mt-4 text-sm font-medium text-slate-700 dark:text-slate-200;
   }
 
   .empty-state-description {
-    @apply mt-1 max-w-sm text-sm text-slate-500;
+    @apply mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400;
   }
 
   /* Inline alert banners */
@@ -95,40 +96,40 @@
   }
 
   .alert-error {
-    @apply border-red-200 bg-red-50 text-red-800;
+    @apply border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300;
   }
 
   .alert-success {
-    @apply border-emerald-200 bg-emerald-50 text-emerald-800;
+    @apply border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300;
   }
 
   .alert-info {
-    @apply border-brand-200 bg-brand-50 text-brand-900;
+    @apply border-brand-200 bg-brand-50 text-brand-900 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-300;
   }
 
   .alert-warning {
-    @apply border-amber-200 bg-amber-50 text-amber-900;
+    @apply border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300;
   }
 
   /* Table primitives */
   .table-wrap {
-    @apply overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-night-900;
   }
 
   .table-basic {
-    @apply min-w-full divide-y divide-slate-200 text-left text-sm;
+    @apply min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-700;
   }
 
   .table-basic thead th {
-    @apply bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-night-800 dark:text-slate-400;
   }
 
   .table-basic tbody td {
-    @apply px-4 py-3 text-slate-700;
+    @apply px-4 py-3 text-slate-700 dark:text-slate-300;
   }
 
   .table-basic tbody tr {
-    @apply transition hover:bg-slate-50;
+    @apply transition hover:bg-slate-50 dark:hover:bg-night-800;
   }
 
   /* Badges */
@@ -137,30 +138,40 @@
   }
 
   .badge-success {
-    @apply bg-emerald-100 text-emerald-800;
+    @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300;
   }
 
   .badge-warning {
-    @apply bg-amber-100 text-amber-800;
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300;
   }
 
   .badge-danger {
-    @apply bg-red-100 text-red-800;
+    @apply bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300;
   }
 
   .badge-neutral {
-    @apply bg-slate-100 text-slate-700;
+    @apply bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300;
   }
 
   .badge-brand {
-    @apply bg-brand-100 text-brand-800;
+    @apply bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-300;
+  }
+
+  /* Gradient accent card used on hero/dashboard */
+  .accent-card {
+    @apply relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card dark:border-slate-700 dark:bg-night-900;
+  }
+
+  .accent-card::before {
+    content: "";
+    @apply pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-brand-gradient opacity-20 blur-3xl;
   }
 }
 
 @layer utilities {
   /* Skeleton shimmer for loading placeholders */
   .skeleton {
-    @apply animate-pulse rounded-xl bg-slate-200/70;
+    @apply animate-pulse rounded-xl bg-slate-200/70 dark:bg-slate-700/50;
   }
 }
 

@@ -45,25 +45,25 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     <div
       role="dialog"
       aria-label="LifeLink AI assistant"
-      className="fixed bottom-24 right-6 z-50 flex h-[min(32rem,calc(100vh-7rem))] w-[min(24rem,calc(100vw-3rem))] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl md:w-96"
+      className="fixed bottom-24 right-6 z-50 flex h-[min(32rem,calc(100vh-7rem))] w-[min(24rem,calc(100vw-3rem))] flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-night-900 shadow-xl md:w-96"
     >
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-4 py-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-brand-600" aria-hidden="true" />
-          <span className="text-sm font-medium text-slate-900">LifeLink AI</span>
+          <Sparkles className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+          <span className="text-sm font-medium text-slate-900 dark:text-white">LifeLink AI</span>
         </div>
         <div className="flex items-center gap-1">
           {messages.length > 0 && (
             <button
               onClick={clearConversation}
-              className="rounded px-2 py-1 text-xs text-slate-500 transition hover:bg-slate-100"
+              className="rounded px-2 py-1 text-xs text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-night-800"
             >
               Clear
             </button>
           )}
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100"
+            className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-night-800"
             aria-label="Close AI assistant"
           >
             <X className="h-4 w-4" />
@@ -73,7 +73,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
 
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 && (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Ask me about your vault, documents, or emergency setup.
           </p>
         )}
@@ -87,7 +87,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
                 "max-w-[85%] rounded-lg px-3 py-2 text-sm",
                 msg.role === "user"
                   ? "bg-brand-600 text-white"
-                  : "border border-slate-200 bg-slate-50 text-slate-900"
+                  : "border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-night-950 text-slate-900 dark:text-white"
               )}
             >
               {msg.content}
@@ -97,7 +97,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
 
         {isTyping && (
           <div className="flex justify-start">
-            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-night-950 px-3 py-2">
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" />
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:100ms]" />
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:200ms]" />
@@ -106,7 +106,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
         )}
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-800 dark:text-red-300">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="ml-2 font-medium underline">
               Dismiss
@@ -116,7 +116,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <form
-        className="flex items-center gap-2 border-t border-slate-200 p-3"
+        className="flex items-center gap-2 border-t border-slate-200 dark:border-slate-800 p-3"
         onSubmit={(e) => {
           e.preventDefault();
           sendMessage();
@@ -128,7 +128,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
           placeholder="Ask LifeLink AI…"
           disabled={isTyping}
           aria-label="Message"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:opacity-60"
+          className="flex-1 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:opacity-60"
         />
         <button
           type="submit"

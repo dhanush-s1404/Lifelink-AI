@@ -81,12 +81,12 @@ function OtpVerifyContent() {
     <Card className="w-full max-w-md">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-brand-600" aria-hidden="true" />
+          <ShieldCheck className="h-5 w-5 text-brand-600 dark:text-brand-400" aria-hidden="true" />
           <CardTitle>Verify your code</CardTitle>
         </div>
       </CardHeader>
       <CardBody>
-        <p className="mb-4 text-sm text-slate-600">
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
           A 6-digit verification code was sent to your email. Enter it below to continue.
         </p>
 
@@ -109,14 +109,14 @@ function OtpVerifyContent() {
         </form>
 
         <div className="mt-6 flex items-center justify-between text-sm">
-          <span className="text-slate-500">
+          <span className="text-slate-500 dark:text-slate-400">
             {resendDisabled ? `Resend available in ${resendTime}s` : "Didn't get a code?"}
           </span>
           <button
             type="button"
             onClick={handleResend}
             disabled={resendDisabled || resending}
-            className="font-medium text-brand-600 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+            className="font-medium text-brand-600 dark:text-brand-400 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
           >
             {resending ? "Sending…" : "Resend code"}
           </button>
@@ -136,7 +136,7 @@ export default function OtpVerifyPage() {
               <CardTitle>Verify your code</CardTitle>
             </CardHeader>
             <CardBody>
-              <p className="text-sm text-slate-500">Loading…</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
             </CardBody>
           </Card>
         }

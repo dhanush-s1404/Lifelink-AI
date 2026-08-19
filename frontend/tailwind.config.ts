@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -22,6 +23,13 @@ const config: Config = {
           800: "#1e40af",
           900: "#1e3a8a",
         },
+        night: {
+          950: "#0b1220",
+          900: "#0f172a",
+          850: "#131c30",
+          800: "#1a2438",
+          700: "#24304a",
+        },
       },
       fontFamily: {
         sans: [
@@ -39,6 +47,14 @@ const config: Config = {
       boxShadow: {
         card: "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 1px 3px 0 rgb(15 23 42 / 0.08)",
         pop: "0 4px 6px -1px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.06)",
+        glow: "0 0 0 1px rgb(37 99 235 / 0.25), 0 8px 24px -6px rgb(37 99 235 / 0.35)",
+      },
+      backgroundImage: {
+        "brand-gradient": "linear-gradient(135deg, #2563eb 0%, #4f8ff7 55%, #22d3ee 100%)",
+        "brand-gradient-soft":
+          "linear-gradient(180deg, #eef5ff 0%, #ffffff 60%)",
+        "night-gradient":
+          "linear-gradient(180deg, #0f172a 0%, #0b1220 100%)",
       },
     },
   },

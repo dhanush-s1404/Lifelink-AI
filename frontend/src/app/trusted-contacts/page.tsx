@@ -22,11 +22,11 @@ import { useToast } from "@/lib/toast";
 
 function StatusBadge({ status }: { status: Contact["status"] }) {
   return status === "active" ? (
-    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+    <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
       Active
     </span>
   ) : (
-    <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+    <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/40 px-2.5 py-0.5 text-xs font-medium text-amber-700">
       Pending
     </span>
   );
@@ -37,7 +37,7 @@ function ContactPermissions({ contact }: { contact: Contact }) {
   if (contact.can_activate_emergency) permissions.push("Can activate emergency");
   if (contact.can_view_vaults) permissions.push("Can view vaults");
   permissions.push(`${contact.access_grace_days}d grace`);
-  return <p className="mt-0.5 text-xs text-slate-500">{permissions.join(" · ")}</p>;
+  return <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{permissions.join(" · ")}</p>;
 }
 
 function ContactRow({
@@ -51,17 +51,17 @@ function ContactRow({
     <li>
       <div className="flex items-center justify-between gap-4 py-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-slate-900">
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
             {contact.contact_name ?? contact.contact_email ?? "Unknown"}
           </p>
-          <p className="truncate text-xs text-slate-500">{contact.contact_email}</p>
+          <p className="truncate text-xs text-slate-500 dark:text-slate-400">{contact.contact_email}</p>
           <ContactPermissions contact={contact} />
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <StatusBadge status={contact.status} />
           <button
             aria-label="Remove contact"
-            className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+            className="rounded-lg p-2 text-slate-400 dark:text-slate-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
             onClick={() => onRemove(contact.id)}
           >
             <Trash2 className="h-4 w-4" />
@@ -107,7 +107,7 @@ function InviteForm({ onInvited }: { onInvited: () => void }) {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             They must have a LifeLink account. Your contact can then accept to become an active
             emergency contact.
           </p>
@@ -174,8 +174,8 @@ export default function TrustedContactsPage() {
     <RequireAuth>
       <AppShell>
         <div className="mx-auto max-w-5xl p-8">
-          <h1 className="text-2xl font-bold text-slate-900">Trusted contacts</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Trusted contacts</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             People you trust to act in an emergency. Invitations require mutual consent.
           </p>
 
@@ -187,15 +187,15 @@ export default function TrustedContactsPage() {
                     <CardTitle>Incoming requests</CardTitle>
                   </CardHeader>
                   <CardBody className="p-0">
-                    <ul className="divide-y divide-slate-100 px-5">
+                    <ul className="divide-y divide-slate-100 dark:divide-slate-800 px-5">
                       {incoming.map((contact) => (
                         <li key={contact.id} className="py-3">
                           <div className="flex items-center justify-between gap-4">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-slate-900">
+                              <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
                                 {contact.contact_name ?? contact.contact_email}
                               </p>
-                              <p className="truncate text-xs text-slate-500">
+                              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                                 {contact.contact_email} wants you as a contact
                               </p>
                             </div>
@@ -232,7 +232,7 @@ export default function TrustedContactsPage() {
                 </CardHeader>
                 <CardBody className="p-0">
                   {isError && (
-                    <div className="p-5 text-sm text-red-800">
+                    <div className="p-5 text-sm text-red-800 dark:text-red-300">
                       <p className="font-medium">Could not load your contacts.</p>
                       <button className="mt-2 text-red-700 underline" onClick={() => refetch()}>
                         Try again
@@ -242,11 +242,11 @@ export default function TrustedContactsPage() {
                   {isLoading ? (
                     <div className="space-y-2 p-5">
                       {[1, 2].map((i) => (
-                        <div key={i} className="h-14 animate-pulse rounded-lg bg-slate-100" />
+                        <div key={i} className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-night-800" />
                       ))}
                     </div>
                   ) : contacts && contacts.length > 0 ? (
-                    <ul className="divide-y divide-slate-100 px-5">
+                    <ul className="divide-y divide-slate-100 dark:divide-slate-800 px-5">
                       {contacts.map((contact) => (
                         <ContactRow
                           key={contact.id}
@@ -259,8 +259,8 @@ export default function TrustedContactsPage() {
                     </ul>
                   ) : (
                     <div className="p-10 text-center">
-                      <Plus className="mx-auto h-8 w-8 text-slate-300" />
-                      <p className="mt-3 text-sm text-slate-500">
+                      <Plus className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+                      <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
                         No trusted contacts yet. Invite someone you trust.
                       </p>
                     </div>

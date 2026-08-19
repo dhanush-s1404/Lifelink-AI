@@ -33,11 +33,13 @@ function CreateVaultCard({ onCreated }: { onCreated: () => void }) {
   return (
     <Card>
       <CardBody>
-        <div className="flex items-center gap-2 text-slate-900">
-          <Plus className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-slate-900 dark:text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gradient text-white">
+            <Plus className="h-4 w-4" />
+          </span>
           <h2 className="font-semibold">Create a vault</h2>
         </div>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Vaults keep your sensitive records organized and encrypted at rest.
         </p>
         <form
@@ -94,17 +96,17 @@ export default function VaultPage() {
     <RequireAuth>
       <AppShell>
         <div className="mx-auto max-w-5xl p-8">
-          <h1 className="text-2xl font-bold text-slate-900">Vault</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Vault</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Your encrypted digital emergency vaults.
           </p>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
               {isError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
                   <p className="font-medium">Could not load your vaults.</p>
-                  <button className="mt-2 text-red-700 underline" onClick={() => refetch()}>
+                  <button className="mt-2 text-red-700 underline dark:text-red-300" onClick={() => refetch()}>
                     Try again
                   </button>
                 </div>
@@ -113,26 +115,26 @@ export default function VaultPage() {
               {isLoading ? (
                 <div className="space-y-4">
                   {[1, 2].map((i) => (
-                    <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100" />
+                    <div key={i} className="skeleton h-24" />
                   ))}
                 </div>
               ) : vaults && vaults.length > 0 ? (
                 <ul className="space-y-3">
                   {vaults.map((vault) => (
-                    <Card key={vault.id}>
+                    <Card key={vault.id} className="transition hover:shadow-pop">
                       <CardBody className="flex items-center justify-between gap-4">
                         <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-card">
                             <Lock className="h-5 w-5" />
                           </div>
                           <div className="min-w-0">
                             <Link
                               href={`/vault/${vault.id}`}
-                              className="block truncate font-semibold text-slate-900 hover:text-brand-700"
+                              className="block truncate font-semibold text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-400"
                             >
                               {vault.name}
                             </Link>
-                            <p className="truncate text-sm text-slate-500">
+                            <p className="truncate text-sm text-slate-500 dark:text-slate-400">
                               {vault.description || "No description"}
                             </p>
                           </div>
@@ -148,7 +150,7 @@ export default function VaultPage() {
                           </Button>
                           <button
                             aria-label={`Delete ${vault.name}`}
-                            className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                             onClick={() => {
                               if (confirm(`Delete vault "${vault.name}"? This cannot be undone.`)) {
                                 remove.mutate(vault.id);
@@ -163,10 +165,11 @@ export default function VaultPage() {
                   ))}
                 </ul>
               ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center">
-                  <Archive className="mx-auto h-8 w-8 text-slate-300" />
-                  <p className="mt-3 text-sm text-slate-500">
-                    No vaults yet. Create your first vault to get started.
+                <div className="empty-state">
+                  <Archive className="empty-state-icon" />
+                  <p className="empty-state-title">No vaults yet</p>
+                  <p className="empty-state-description">
+                    Create your first vault to get started.
                   </p>
                 </div>
               )}

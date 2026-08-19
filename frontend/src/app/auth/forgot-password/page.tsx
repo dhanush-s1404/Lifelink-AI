@@ -47,11 +47,11 @@ export default function ForgotPasswordPage() {
         <CardBody>
           {sent ? (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-slate-700">
+              <p className="text-sm text-slate-700 dark:text-slate-200">
                 If an account exists for that email, you will receive a password reset message
                 shortly. Check your inbox.
               </p>
-              <Link href="/auth/login" className="text-sm font-medium text-brand-600 hover:underline">
+              <Link href="/auth/login" className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline">
                 Back to sign in
               </Link>
             </div>
@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
               <Button type="submit" size="lg" loading={submitting}>
                 Send reset link
               </Button>
-              <Link href="/auth/login" className="text-center text-sm font-medium text-brand-600 hover:underline">
+              <Link href="/auth/login" className="text-center text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline">
                 Back to sign in
               </Link>
             </form>

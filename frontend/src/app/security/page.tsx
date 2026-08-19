@@ -54,7 +54,7 @@ export default function SecurityPage() {
               </CardHeader>
               <CardBody className="p-0">
                 {isError && (
-                  <div className="p-5 text-sm text-red-800">
+                  <div className="p-5 text-sm text-red-800 dark:text-red-300">
                     <p className="font-medium">Could not load your sessions.</p>
                     <button className="mt-2 text-red-700 underline" onClick={() => refetch()}>
                       Try again
@@ -64,28 +64,28 @@ export default function SecurityPage() {
                 {isLoading ? (
                   <div className="space-y-2 p-5">
                     {[1, 2].map((i) => (
-                      <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-100" />
+                      <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-100 dark:bg-night-800" />
                     ))}
                   </div>
                 ) : sessions && sessions.length > 0 ? (
-                  <ul className="divide-y divide-slate-100 px-5">
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-800 px-5">
                     {sessions.map((session) => (
                       <li key={session.id} className="flex items-start justify-between gap-4 py-4">
                         <div className="flex items-start gap-3">
-                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-                            <Monitor className="h-4 w-4 text-slate-600" aria-hidden="true" />
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-night-800">
+                            <Monitor className="h-4 w-4 text-slate-600 dark:text-slate-400" aria-hidden="true" />
                           </span>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-900">
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">
                               {session.device_name ?? "Web session"}
                               {session.is_current && (
                                 <span className="ml-2 badge badge-brand">This device</span>
                               )}
                             </p>
-                            <p className="mt-0.5 truncate text-xs text-slate-500">
+                            <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
                               {session.user_agent ?? "Unknown browser"}
                             </p>
-                            <p className="mt-0.5 text-xs text-slate-500">
+                            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                               {session.ip_address ?? "Unknown IP"} · created{" "}
                               {formatWhen(session.created_at)}
                             </p>
@@ -96,8 +96,8 @@ export default function SecurityPage() {
                   </ul>
                 ) : (
                   <div className="p-10 text-center">
-                    <Monitor className="mx-auto h-8 w-8 text-slate-300" />
-                    <p className="mt-3 text-sm text-slate-500">No active sessions found.</p>
+                    <Monitor className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+                    <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">No active sessions found.</p>
                   </div>
                 )}
               </CardBody>
@@ -109,7 +109,7 @@ export default function SecurityPage() {
                   <CardTitle>Account protection</CardTitle>
                 </CardHeader>
                 <CardBody>
-                  <ul className="space-y-3 text-sm text-slate-600">
+                  <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
                     <li className="flex gap-2">
                       <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
                       Passwords are stored as Argon2id hashes.
@@ -130,7 +130,7 @@ export default function SecurityPage() {
                   <CardTitle>Two-factor authentication</CardTitle>
                 </CardHeader>
                 <CardBody>
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
                     Two-factor authentication is not yet enabled on your account. It will become
                     available in an upcoming release.
                   </p>

@@ -43,33 +43,33 @@ export default function ProfilePage() {
               <CardBody>
                 <dl className="space-y-4 text-sm">
                   <div className="flex items-start gap-3">
-                    <Mail className="mt-0.5 h-4 w-4 text-slate-400" aria-hidden="true" />
+                    <Mail className="mt-0.5 h-4 w-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                     <div>
-                      <dt className="font-medium text-slate-900">Email</dt>
-                      <dd className="mt-0.5 text-slate-600">{user?.email}</dd>
+                      <dt className="font-medium text-slate-900 dark:text-white">Email</dt>
+                      <dd className="mt-0.5 text-slate-600 dark:text-slate-400">{user?.email}</dd>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <UserIcon className="mt-0.5 h-4 w-4 text-slate-400" aria-hidden="true" />
+                    <UserIcon className="mt-0.5 h-4 w-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                     <div>
-                      <dt className="font-medium text-slate-900">Full name</dt>
-                      <dd className="mt-0.5 text-slate-600">{user?.full_name ?? "Not set"}</dd>
+                      <dt className="font-medium text-slate-900 dark:text-white">Full name</dt>
+                      <dd className="mt-0.5 text-slate-600 dark:text-slate-400">{user?.full_name ?? "Not set"}</dd>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <CalendarDays className="mt-0.5 h-4 w-4 text-slate-400" aria-hidden="true" />
+                    <CalendarDays className="mt-0.5 h-4 w-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                     <div>
-                      <dt className="font-medium text-slate-900">Joined</dt>
-                      <dd className="mt-0.5 text-slate-600">{formatDate(user?.created_at)}</dd>
+                      <dt className="font-medium text-slate-900 dark:text-white">Joined</dt>
+                      <dd className="mt-0.5 text-slate-600 dark:text-slate-400">{formatDate(user?.created_at)}</dd>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-4 w-4 items-center justify-center text-slate-400">
+                    <span className="mt-0.5 flex h-4 w-4 items-center justify-center text-slate-400 dark:text-slate-500">
                       <span className="h-2 w-2 rounded-full bg-emerald-500" />
                     </span>
                     <div>
-                      <dt className="font-medium text-slate-900">Status</dt>
-                      <dd className="mt-0.5 text-slate-600">
+                      <dt className="font-medium text-slate-900 dark:text-white">Status</dt>
+                      <dd className="mt-0.5 text-slate-600 dark:text-slate-400">
                         {user?.is_active ? "Active" : "Inactive"}
                         {user?.is_verified ? " · Email verified" : " · Email not verified"}
                       </dd>
@@ -84,7 +84,7 @@ export default function ProfilePage() {
                 <CardTitle>Manage your account</CardTitle>
               </CardHeader>
               <CardBody>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   Update your name and password, and review the devices signed in to your
                   account.
                 </p>
