@@ -82,3 +82,11 @@ Retrying 1/3...
  GET /auth/login 200 in 492ms
  GET /dashboard 200 in 74ms
  GET /vault 200 in 116ms
+ GET / 200 in 1218ms
+ GET /auth/login 200 in 351ms
+ GET /auth/register 200 in 402ms
+ GET /auth/otp-verify 200 in 751ms
+ GET /auth/forgot-password 200 in 387ms
+ GET /auth/login 200 in 474ms
+ GET /dashboard 200 in 209ms
+ GET /dashboard 200 in 389ms
