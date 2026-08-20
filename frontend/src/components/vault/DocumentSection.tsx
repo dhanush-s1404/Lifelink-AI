@@ -2,9 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileText, Paperclip, Trash2, Upload } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useToast } from "@/lib/toast";
 import {
   deleteDocument,
@@ -12,12 +13,14 @@ import {
   formatBytes,
   listDocuments,
   uploadDocument,
+  type Document,
 } from "@/lib/documents";
 
 export function DocumentSection({ vaultId, itemId }: { vaultId: string; itemId: string }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [pendingDelete, setPendingDelete] = useState<Document | null>(null);
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ["vault", vaultId, "items", itemId, "documents"],
@@ -39,11 +42,15 @@ export function DocumentSection({ vaultId, itemId }: { vaultId: string; itemId: 
     mutationFn: (documentId: string) => deleteDocument(vaultId, itemId, documentId),
     onSuccess: () => {
       toast.push("success", "Document deleted");
+      setPendingDelete(null);
       queryClient.invalidateQueries({
         queryKey: ["vault", vaultId, "items", itemId, "documents"],
       });
     },
-    onError: (err: Error) => toast.push("error", err.message),
+    onError: (err: Error) => {
+      toast.push("error", err.message);
+      setPendingDelete(null);
+    },
   });
 
   return (
@@ -109,9 +116,7 @@ export function DocumentSection({ vaultId, itemId }: { vaultId: string; itemId: 
                 <button
                   aria-label={`Delete ${doc.original_filename}`}
                   className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                  onClick={() => {
-                    if (confirm(`Delete "${doc.original_filename}"?`)) remove.mutate(doc.id);
-                  }}
+                  onClick={() => setPendingDelete(doc)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -124,6 +129,14 @@ export function DocumentSection({ vaultId, itemId }: { vaultId: string; itemId: 
           No documents yet. Upload files such as scans or PDFs.
         </p>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        title={pendingDelete ? `Delete "${pendingDelete.original_filename}"?` : ""}
+        loading={remove.isPending}
+        onConfirm={() => pendingDelete && remove.mutate(pendingDelete.id)}
+      />
     </div>
   );
 }
