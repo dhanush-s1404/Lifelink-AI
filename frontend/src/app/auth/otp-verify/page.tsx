@@ -5,8 +5,8 @@ import { Suspense, useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { useToast } from "@/lib/toast";
 
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/Button";
-import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { ApiError, apiPost } from "@/lib/api";
 
@@ -78,71 +78,67 @@ function OtpVerifyContent() {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-brand-600 dark:text-brand-400" aria-hidden="true" />
-          <CardTitle>Verify your code</CardTitle>
+    <>
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100 dark:bg-brand-900/40 dark:text-brand-300 dark:ring-brand-800/60">
+          <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-[1.75rem]">
+            Verify your code
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
+            Two-step verification
+          </p>
         </div>
-      </CardHeader>
-      <CardBody>
-        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-          A 6-digit verification code was sent to your email. Enter it below to continue.
-        </p>
+      </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input
-            id="otp-input"
-            label="Verification code"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="123456"
-            maxLength={6}
-            value={otpCode}
-            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            required
-          />
-          <Button type="submit" size="lg" loading={submitting} disabled={otpCode.length !== 6}>
-            Verify
-          </Button>
-        </form>
+      <p className="mt-6 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        A 6-digit verification code was sent to your email. Enter it below to continue.
+      </p>
 
-        <div className="mt-6 flex items-center justify-between text-sm">
-          <span className="text-slate-500 dark:text-slate-400">
-            {resendDisabled ? `Resend available in ${resendTime}s` : "Didn't get a code?"}
-          </span>
-          <button
-            type="button"
-            onClick={handleResend}
-            disabled={resendDisabled || resending}
-            className="font-medium text-brand-600 dark:text-brand-400 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
-          >
-            {resending ? "Sending…" : "Resend code"}
-          </button>
-        </div>
-      </CardBody>
-    </Card>
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        <Input
+          id="otp-input"
+          label="Verification code"
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="123456"
+          maxLength={6}
+          value={otpCode}
+          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          required
+          className="text-center text-lg font-semibold tracking-[0.5em]"
+        />
+        <Button type="submit" size="lg" loading={submitting} disabled={otpCode.length !== 6}>
+          Verify
+        </Button>
+      </form>
+
+      <div className="mt-6 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-night-900">
+        <span className="text-slate-500 dark:text-slate-400">
+          {resendDisabled ? `Resend available in ${resendTime}s` : "Didn't get a code?"}
+        </span>
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={resendDisabled || resending}
+          className="font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 disabled:cursor-not-allowed disabled:text-slate-400"
+        >
+          {resending ? "Sending…" : "Resend code"}
+        </button>
+      </div>
+    </>
   );
 }
 
 export default function OtpVerifyPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Suspense
-        fallback={
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Verify your code</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
-            </CardBody>
-          </Card>
-        }
-      >
+    <AuthLayout>
+      <Suspense fallback={<p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>}>
         <OtpVerifyContent />
       </Suspense>
-    </main>
+    </AuthLayout>
   );
 }

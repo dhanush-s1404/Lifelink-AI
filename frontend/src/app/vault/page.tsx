@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Lock, Plus, Trash2 } from "lucide-react";
+import { Archive, FolderLock, Lock, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -9,9 +9,12 @@ import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/Dialog";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/lib/toast";
-import { createVault, deleteVault, listVaults } from "@/lib/vault";
+import { createVault, deleteVault, listVaults, type Vault } from "@/lib/vault";
 
 function CreateVaultCard({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
@@ -33,17 +36,17 @@ function CreateVaultCard({ onCreated }: { onCreated: () => void }) {
   return (
     <Card>
       <CardBody>
-        <div className="flex items-center gap-2 text-slate-900 dark:text-white">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gradient text-white">
-            <Plus className="h-4 w-4" />
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-card">
+            <Plus className="h-4 w-4" aria-hidden="true" />
           </span>
-          <h2 className="font-semibold">Create a vault</h2>
+          <div>
+            <h2 className="font-semibold text-slate-900 dark:text-white">Create a vault</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Keep records organized</p>
+          </div>
         </div>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Vaults keep your sensitive records organized and encrypted at rest.
-        </p>
         <form
-          className="mt-4 flex flex-col gap-3"
+          className="mt-5 flex flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (name.trim()) mutation.mutate();
@@ -62,12 +65,55 @@ function CreateVaultCard({ onCreated }: { onCreated: () => void }) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <div>
-            <Button type="submit" loading={mutation.isPending} disabled={!name.trim()}>
-              Create vault
-            </Button>
-          </div>
+          <Button type="submit" loading={mutation.isPending} disabled={!name.trim()} className="w-full">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Create vault
+          </Button>
         </form>
+      </CardBody>
+    </Card>
+  );
+}
+
+function VaultCard({ vault, onDelete }: { vault: Vault; onDelete: (v: Vault) => void }) {
+  return (
+    <Card className="group transition-all duration-300 hover:-translate-y-1 hover:shadow-lifted">
+      <CardBody>
+        <div className="flex items-start justify-between gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-card transition-transform duration-300 group-hover:scale-105">
+            <FolderLock className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <Button
+            variant="ghost"
+            size="xs"
+            className="text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+            onClick={() => onDelete(vault)}
+          >
+            Delete
+          </Button>
+        </div>
+        <Link
+          href={`/vault/${vault.id}`}
+          className="mt-4 block truncate font-semibold text-slate-900 transition-colors hover:text-brand-700 dark:text-white dark:hover:text-brand-400"
+        >
+          {vault.name}
+        </Link>
+        <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+          {vault.description || "No description"}
+        </p>
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3.5 dark:border-slate-800">
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+            Encrypted
+          </span>
+          <Link
+            href={`/vault/${vault.id}`}
+            className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
+          >
+            Open
+            <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        </div>
       </CardBody>
     </Card>
   );
@@ -76,6 +122,7 @@ function CreateVaultCard({ onCreated }: { onCreated: () => void }) {
 export default function VaultPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const [pendingDelete, setPendingDelete] = useState<Vault | null>(null);
 
   const { data: vaults, isLoading, isError, refetch } = useQuery({
     queryKey: ["vaults"],
@@ -86,100 +133,87 @@ export default function VaultPage() {
     mutationFn: (id: string) => deleteVault(id),
     onSuccess: () => {
       toast.push("success", "Vault deleted");
+      setPendingDelete(null);
       queryClient.invalidateQueries({ queryKey: ["vaults"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
     },
-    onError: (err: Error) => toast.push("error", err.message),
+    onError: (err: Error) => {
+      toast.push("error", err.message);
+      setPendingDelete(null);
+    },
   });
 
   return (
     <RequireAuth>
       <AppShell>
-        <div className="mx-auto max-w-5xl p-8">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Vault</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Your encrypted digital emergency vaults.
-          </p>
+        <div className="page-shell">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="page-heading">Vault</h1>
+              <p className="page-subheading">
+                Your encrypted digital emergency vaults, organized by category.
+              </p>
+            </div>
+          </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              {isError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
-                  <p className="font-medium">Could not load your vaults.</p>
-                  <button className="mt-2 text-red-700 underline dark:text-red-300" onClick={() => refetch()}>
-                    Try again
-                  </button>
-                </div>
-              )}
+          {isError && (
+            <div className="alert alert-error mt-6">
+              <div className="flex-1">
+                <p className="font-medium">Could not load your vaults.</p>
+              </div>
+              <button className="shrink-0 text-sm font-semibold underline" onClick={() => refetch()}>
+                Try again
+              </button>
+            </div>
+          )}
 
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
+            <div className="space-y-6 lg:col-span-2">
               {isLoading ? (
-                <div className="space-y-4">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="skeleton h-24" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-48" />
                   ))}
                 </div>
               ) : vaults && vaults.length > 0 ? (
-                <ul className="space-y-3">
+                <div className="grid gap-4 sm:grid-cols-2">
                   {vaults.map((vault) => (
-                    <Card key={vault.id} className="transition hover:shadow-pop">
-                      <CardBody className="flex items-center justify-between gap-4">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-card">
-                            <Lock className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <Link
-                              href={`/vault/${vault.id}`}
-                              className="block truncate font-semibold text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-400"
-                            >
-                              {vault.name}
-                            </Link>
-                            <p className="truncate text-sm text-slate-500 dark:text-slate-400">
-                              {vault.description || "No description"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => (window.location.href = `/vault/${vault.id}`)}
-                          >
-                            <Archive className="h-4 w-4" />
-                            Open
-                          </Button>
-                          <button
-                            aria-label={`Delete ${vault.name}`}
-                            className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                            onClick={() => {
-                              if (confirm(`Delete vault "${vault.name}"? This cannot be undone.`)) {
-                                remove.mutate(vault.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </CardBody>
-                    </Card>
+                    <VaultCard key={vault.id} vault={vault} onDelete={setPendingDelete} />
                   ))}
-                </ul>
-              ) : (
-                <div className="empty-state">
-                  <Archive className="empty-state-icon" />
-                  <p className="empty-state-title">No vaults yet</p>
-                  <p className="empty-state-description">
-                    Create your first vault to get started.
-                  </p>
                 </div>
+              ) : (
+                <EmptyState
+                  icon={<FolderLock className="h-6 w-6" aria-hidden="true" />}
+                  title="No vaults yet"
+                  description="Create your first vault to start protecting your family's most important records."
+                  action={
+                    <a href="#create-vault">
+                      <Button>
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Create your first vault
+                      </Button>
+                    </a>
+                  }
+                />
               )}
             </div>
 
-            <div>
-              <CreateVaultCard onCreated={() => queryClient.invalidateQueries({ queryKey: ["vaults"] })} />
+            <div id="create-vault">
+              <CreateVaultCard
+                onCreated={() => queryClient.invalidateQueries({ queryKey: ["vaults"] })}
+              />
             </div>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={pendingDelete !== null}
+          onClose={() => setPendingDelete(null)}
+          title={pendingDelete ? `Delete "${pendingDelete.name}"?` : ""}
+          description="All items inside this vault will be permanently removed."
+          loading={remove.isPending}
+          onConfirm={() => pendingDelete && remove.mutate(pendingDelete.id)}
+        />
       </AppShell>
     </RequireAuth>
   );

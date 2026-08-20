@@ -52,38 +52,57 @@
   a {
     @apply text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300;
   }
+
+  /* Premium thin scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full border-2 border-solid border-transparent bg-clip-content bg-slate-300 dark:bg-slate-600;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400 dark:bg-slate-500;
+  }
 }
 
 @layer components {
   /* Shared page scaffolding for authenticated areas */
   .page-shell {
-    @apply mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10;
+    @apply mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10;
   }
 
   .page-heading {
-    @apply text-2xl font-bold text-slate-900 dark:text-white;
+    @apply text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-[1.7rem];
   }
 
   .page-subheading {
     @apply mt-1 text-sm text-slate-600 dark:text-slate-400;
   }
 
+  .page-heading-icon {
+    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 ring-1 ring-brand-100 dark:bg-brand-900/40 dark:text-brand-300 dark:ring-brand-800/60;
+  }
+
   /* Consistent card container */
   .surface {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-night-900;
+    @apply rounded-2xl border border-slate-200 bg-white shadow-card dark:border-slate-700/70 dark:bg-night-900;
   }
 
   /* Empty-state placeholder */
   .empty-state {
-    @apply flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center dark:border-slate-700 dark:bg-night-900;
+    @apply flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-slate-700 dark:bg-night-900/60;
   }
 
   .empty-state-icon {
-    @apply h-10 w-10 text-slate-300 dark:text-slate-600;
+    @apply h-11 w-11 text-slate-300 dark:text-slate-600;
   }
 
   .empty-state-title {
-    @apply mt-4 text-sm font-medium text-slate-700 dark:text-slate-200;
+    @apply mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200;
   }
 
   .empty-state-description {
@@ -92,7 +111,7 @@
 
   /* Inline alert banners */
   .alert {
-    @apply rounded-lg border px-4 py-3 text-sm;
+    @apply flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm;
   }
 
   .alert-error {
@@ -113,7 +132,7 @@
 
   /* Table primitives */
   .table-wrap {
-    @apply overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-night-900;
+    @apply overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-card dark:border-slate-700/70 dark:bg-night-900;
   }
 
   .table-basic {
@@ -134,7 +153,7 @@
 
   /* Badges */
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 
   .badge-success {
@@ -166,12 +185,39 @@
     content: "";
     @apply pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-brand-gradient opacity-20 blur-3xl;
   }
+
+  /* Form control base (shared by Input/Select/Textarea) */
+  .form-control {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 hover:border-slate-400 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-600/10 dark:border-slate-600 dark:bg-night-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-500 dark:focus:border-brand-500 dark:focus:ring-brand-500/15;
+  }
+
+  .form-control[aria-invalid="true"] {
+    @apply border-red-400 hover:border-red-400 focus:border-red-500 focus:ring-red-500/10 dark:border-red-500/70;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+
+  .field-hint {
+    @apply mt-1.5 text-xs text-slate-500 dark:text-slate-400;
+  }
+
+  .field-error {
+    @apply mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400;
+  }
 }
 
 @layer utilities {
   /* Skeleton shimmer for loading placeholders */
   .skeleton {
-    @apply animate-pulse rounded-xl bg-slate-200/70 dark:bg-slate-700/50;
+    @apply relative overflow-hidden rounded-xl bg-slate-200/70 dark:bg-slate-700/50;
+  }
+
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0 animate-shimmer bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.5),transparent)] dark:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)];
+    background-size: 200% 100%;
   }
 }
 

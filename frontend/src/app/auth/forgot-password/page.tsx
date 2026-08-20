@@ -1,13 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { KeyRound, MailCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/Button";
-import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { apiPost } from "@/lib/api";
 
@@ -39,42 +40,72 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Reset your password</CardTitle>
-        </CardHeader>
-        <CardBody>
-          {sent ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-slate-700 dark:text-slate-200">
-                If an account exists for that email, you will receive a password reset message
-                shortly. Check your inbox.
+    <AuthLayout>
+      {sent ? (
+        <div className="animate-fade-up">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-800/60">
+              <MailCheck className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-[1.75rem]">
+                Check your inbox
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
+                Password reset requested
               </p>
-              <Link href="/auth/login" className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline">
-                Back to sign in
-              </Link>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <Input
-                label="Email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                error={errors.email?.message}
-                {...register("email")}
-              />
-              <Button type="submit" size="lg" loading={submitting}>
-                Send reset link
-              </Button>
-              <Link href="/auth/login" className="text-center text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline">
-                Back to sign in
-              </Link>
-            </form>
-          )}
-        </CardBody>
-      </Card>
-    </main>
+          </div>
+          <p className="mt-6 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+            If an account exists for that email, you will receive a password reset message
+            shortly. Follow the link in the email to choose a new password.
+          </p>
+          <div className="mt-8 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+            Don&apos;t see it? Check your spam folder — the message usually arrives within a few
+            minutes.
+          </div>
+          <Link href="/auth/login">
+            <Button variant="secondary" size="lg" className="mt-8 w-full">
+              Back to sign in
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <div>
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100 dark:bg-brand-900/40 dark:text-brand-300 dark:ring-brand-800/60">
+              <KeyRound className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-[1.75rem]">
+                Reset your password
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
+                We&apos;ll email you a secure reset link.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
+            <Input
+              label="Email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              error={errors.email?.message}
+              {...register("email")}
+            />
+            <Button type="submit" size="lg" loading={submitting} className="mt-1">
+              Send reset link
+            </Button>
+          </form>
+          <Link href="/auth/login">
+            <Button variant="ghost" size="md" className="mt-6 w-full">
+              Back to sign in
+            </Button>
+          </Link>
+        </div>
+      )}
+    </AuthLayout>
   );
 }

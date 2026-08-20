@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import re
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -69,16 +70,20 @@ class S3ObjectStorage(ObjectStorage):
     ) -> None:
         scheme = "https" if secure else "http"
         self._bucket = bucket
+        clean_endpoint = re.sub(r"^[a-z]+://", "", endpoint).rstrip("/")
         self._client = boto3.client(
             "s3",
-            endpoint_url=f"{scheme}://{endpoint}",
+            endpoint_url=f"{scheme}://{clean_endpoint}",
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
             region_name="us-east-1",
             config=Config(signature_version="s3v4"),
         )
+        self._bucket_ready = False
 
     def _ensure_bucket_sync(self) -> None:
+        if self._bucket_ready:
+            return
         try:
             self._client.head_bucket(Bucket=self._bucket)
         except ClientError:
@@ -86,12 +91,14 @@ class S3ObjectStorage(ObjectStorage):
                 self._client.create_bucket(Bucket=self._bucket)
             except (BotoCoreError, ClientError) as exc:
                 raise StorageError("Unable to create object storage bucket") from exc
+        self._bucket_ready = True
 
     async def put(self, *, key: str, data: bytes, content_type: str) -> None:
         await asyncio.to_thread(self._put_sync, key, data, content_type)
 
     def _put_sync(self, key: str, data: bytes, content_type: str) -> None:
         try:
+            self._ensure_bucket_sync()
             self._client.put_object(
                 Bucket=self._bucket, Key=key, Body=io.BytesIO(data), ContentType=content_type
             )
@@ -149,16 +156,25 @@ class InMemoryObjectStorage(ObjectStorage):
         return key in self._blobs
 
 
+_storage_singleton: ObjectStorage | None = None
+
+
 def build_object_storage() -> ObjectStorage:
+    global _storage_singleton
+    if _storage_singleton is not None:
+        return _storage_singleton
     if settings.environment == "test":
-        return InMemoryObjectStorage()
-    return S3ObjectStorage(
-        endpoint=settings.minio_endpoint,
-        access_key=settings.minio_root_user,
-        secret_key=settings.minio_root_password,
-        bucket=settings.minio_bucket,
-        secure=settings.minio_secure,
-    )
+        storage: ObjectStorage = InMemoryObjectStorage()
+    else:
+        storage = S3ObjectStorage(
+            endpoint=settings.minio_endpoint,
+            access_key=settings.minio_root_user,
+            secret_key=settings.minio_root_password,
+            bucket=settings.minio_bucket,
+            secure=settings.minio_secure,
+        )
+    _storage_singleton = storage
+    return storage
 
 
 def get_object_storage() -> ObjectStorage:

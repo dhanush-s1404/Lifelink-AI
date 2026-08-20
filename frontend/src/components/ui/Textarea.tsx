@@ -3,34 +3,27 @@ import { AlertCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label?: string;
   error?: string;
   hint?: string;
-  required?: boolean;
 };
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, className, id, required, ...rest },
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
+  { label, error, hint, className, id, ...rest },
   ref
 ) {
-  const inputId = id ?? rest.name;
+  const textareaId = id ?? rest.name;
   return (
     <div>
       {label && (
-        <label htmlFor={inputId} className="field-label">
+        <label htmlFor={textareaId} className="field-label">
           {label}
-          {required && (
-            <span className="ml-0.5 text-red-500" aria-hidden="true">
-              *
-            </span>
-          )}
         </label>
       )}
-      <input
+      <textarea
         ref={ref}
-        id={inputId}
-        required={required}
+        id={textareaId}
         aria-invalid={error ? true : undefined}
         className={cn("form-control", className)}
         {...rest}

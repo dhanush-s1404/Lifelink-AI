@@ -16,6 +16,7 @@ from datetime import timedelta
 from typing import Any, cast
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import (
@@ -244,12 +245,19 @@ class AuthService:
                 code="EMAIL_TAKEN",
             )
 
-        user = await self._users.create(
-            email=email,
-            password_hash=hash_password(password),
-            full_name=full_name,
-            is_verified=False,
-        )
+        try:
+            user = await self._users.create(
+                email=email,
+                password_hash=hash_password(password),
+                full_name=full_name,
+                is_verified=False,
+            )
+        except IntegrityError:
+            await self._session.rollback()
+            raise ConflictError(
+                "An account with this email already exists",
+                code="EMAIL_TAKEN",
+            ) from None
         return await self._issue_tokens_for(
             user, user_agent=user_agent, ip_address=ip_address, remember_me=False
         )

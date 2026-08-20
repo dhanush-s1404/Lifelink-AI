@@ -6,12 +6,67 @@
   - Local:        http://localhost:3000
 
  ✓ Starting...
- ✓ Ready in 7.8s
+ ✓ Ready in 6.6s
  ○ Compiling / ...
- ✓ Compiled / in 10.3s (619 modules)
- GET / 200 in 11497ms
- ✓ Compiled in 1303ms (309 modules)
- ✓ Compiled in 229ms (295 modules)
- GET / 200 in 118ms
- GET / 200 in 95ms
- GET / 200 in 68ms
+ ✓ Compiled / in 9s (619 modules)
+ ✓ Compiled in 1190ms (309 modules)
+ GET / 200 in 10265ms
+ ✓ Compiled in 205ms (295 modules)
+ ○ Compiling /auth/register ...
+ ✓ Compiled /auth/register in 2.2s (665 modules)
+ GET /auth/register 200 in 3073ms
+ GET / 200 in 782ms
+ ✓ Compiled in 5s (338 modules)
+ ⨯ ./src/styles/globals.css:219:5
+Syntax error: D:\-CODINGS-\LifeLink\frontend\src\styles\globals.css The `animate-shimmer` class does not exist. If `animate-shimmer` is a custom class, make sure it is defined within a `@layer` directive.
+
+ [90m 217 | [39m  [33m.skeleton[39m[33m:[39m[33m:[39mafter [33m{[39m
+ [90m 218 | [39m    content[33m:[39m [32m""[39m[33m;[39m
+[1m[31m>[39m[22m[90m 219 | [39m    [36m@apply[39m absolute inset-0 animate-shimmer bg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.5)[39m,transparent[36m)[39m[33m][39m dark[33m:[39mbg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.08)[39m,transparent[36m)[39m[33m][39m[33m;[39m
+ [90m     | [39m    [1m[31m^[39m[22m
+ [90m 220 | [39m    background-size[33m:[39m 200% 100%[33m;[39m
+ [90m 221 | [39m  [33m}[39m
+ ⨯ ./src/styles/globals.css:219:5
+Syntax error: D:\-CODINGS-\LifeLink\frontend\src\styles\globals.css The `animate-shimmer` class does not exist. If `animate-shimmer` is a custom class, make sure it is defined within a `@layer` directive.
+
+ [90m 217 | [39m  [33m.skeleton[39m[33m:[39m[33m:[39mafter [33m{[39m
+ [90m 218 | [39m    content[33m:[39m [32m""[39m[33m;[39m
+[1m[31m>[39m[22m[90m 219 | [39m    [36m@apply[39m absolute inset-0 animate-shimmer bg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.5)[39m,transparent[36m)[39m[33m][39m dark[33m:[39mbg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.08)[39m,transparent[36m)[39m[33m][39m[33m;[39m
+ [90m     | [39m    [1m[31m^[39m[22m
+ [90m 220 | [39m    background-size[33m:[39m 200% 100%[33m;[39m
+ [90m 221 | [39m  [33m}[39m
+<w> [webpack.cache.PackFileCacheStrategy] Skipped not serializable cache item 'Compilation/modules|D:\-CODINGS-\LifeLink\frontend\node_modules\next\dist\build\webpack\loaders\css-loader\src\index.js??ruleSet[1].rules[13].oneOf[12].use[2]!D:\-CODINGS-\LifeLink\frontend\node_modules\next\dist\build\webpack\loaders\postcss-loader\src\index.js??ruleSet[1].rules[13].oneOf[12].use[3]!D:\-CODINGS-\LifeLink\frontend\src\styles\globals.css': No serializer registered for PostCSSSyntaxError
+<w> while serializing webpack/lib/cache/PackFileCacheStrategy.PackContentItems -> webpack/lib/NormalModule -> webpack/lib/ModuleBuildError -> PostCSSSyntaxError
+ ⨯ ./src/styles/globals.css:219:5
+Syntax error: D:\-CODINGS-\LifeLink\frontend\src\styles\globals.css The `animate-shimmer` class does not exist. If `animate-shimmer` is a custom class, make sure it is defined within a `@layer` directive.
+
+ [90m 217 | [39m  [33m.skeleton[39m[33m:[39m[33m:[39mafter [33m{[39m
+ [90m 218 | [39m    content[33m:[39m [32m""[39m[33m;[39m
+[1m[31m>[39m[22m[90m 219 | [39m    [36m@apply[39m absolute inset-0 animate-shimmer bg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.5)[39m,transparent[36m)[39m[33m][39m dark[33m:[39mbg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.08)[39m,transparent[36m)[39m[33m][39m[33m;[39m
+ [90m     | [39m    [1m[31m^[39m[22m
+ [90m 220 | [39m    background-size[33m:[39m 200% 100%[33m;[39m
+ [90m 221 | [39m  [33m}[39m
+<w> [webpack.cache.PackFileCacheStrategy] Skipped not serializable cache item 'Compilation/modules|D:\-CODINGS-\LifeLink\frontend\node_modules\next\dist\build\webpack\loaders\css-loader\src\index.js??ruleSet[1].rules[13].oneOf[12].use[2]!D:\-CODINGS-\LifeLink\frontend\node_modules\next\dist\build\webpack\loaders\postcss-loader\src\index.js??ruleSet[1].rules[13].oneOf[12].use[3]!D:\-CODINGS-\LifeLink\frontend\src\styles\globals.css': No serializer registered for PostCSSSyntaxError
+<w> while serializing webpack/lib/cache/PackFileCacheStrategy.PackContentItems -> webpack/lib/NormalModule -> webpack/lib/ModuleBuildError -> PostCSSSyntaxError
+ ⨯ ./src/styles/globals.css:219:5
+Syntax error: D:\-CODINGS-\LifeLink\frontend\src\styles\globals.css The `animate-shimmer` class does not exist. If `animate-shimmer` is a custom class, make sure it is defined within a `@layer` directive.
+
+ [90m 217 | [39m  [33m.skeleton[39m[33m:[39m[33m:[39mafter [33m{[39m
+ [90m 218 | [39m    content[33m:[39m [32m""[39m[33m;[39m
+[1m[31m>[39m[22m[90m 219 | [39m    [36m@apply[39m absolute inset-0 animate-shimmer bg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.5)[39m,transparent[36m)[39m[33m][39m dark[33m:[39mbg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.08)[39m,transparent[36m)[39m[33m][39m[33m;[39m
+ [90m     | [39m    [1m[31m^[39m[22m
+ [90m 220 | [39m    background-size[33m:[39m 200% 100%[33m;[39m
+ [90m 221 | [39m  [33m}[39m
+<w> [webpack.cache.PackFileCacheStrategy] Skipped not serializable cache item 'Compilation/modules|D:\-CODINGS-\LifeLink\frontend\node_modules\next\dist\build\webpack\loaders\css-loader\src\index.js??ruleSet[1].rules[13].oneOf[12].use[2]!D:\-CODINGS-\LifeLink\frontend\node_modules\next\dist\build\webpack\loaders\postcss-loader\src\index.js??ruleSet[1].rules[13].oneOf[12].use[3]!D:\-CODINGS-\LifeLink\frontend\src\styles\globals.css': No serializer registered for PostCSSSyntaxError
+<w> while serializing webpack/lib/cache/PackFileCacheStrategy.PackContentItems -> webpack/lib/NormalModule -> webpack/lib/ModuleBuildError -> PostCSSSyntaxError
+ ⨯ ./src/styles/globals.css:219:5
+Syntax error: D:\-CODINGS-\LifeLink\frontend\src\styles\globals.css The `animate-shimmer` class does not exist. If `animate-shimmer` is a custom class, make sure it is defined within a `@layer` directive.
+
+ [90m 217 | [39m  [33m.skeleton[39m[33m:[39m[33m:[39mafter [33m{[39m
+ [90m 218 | [39m    content[33m:[39m [32m""[39m[33m;[39m
+[1m[31m>[39m[22m[90m 219 | [39m    [36m@apply[39m absolute inset-0 animate-shimmer bg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.5)[39m,transparent[36m)[39m[33m][39m dark[33m:[39mbg-[33m[[39m[36mlinear-gradient[39m[36m([39m[36m90deg,transparent,rgba[39m[36m(255,255,255,0.08)[39m,transparent[36m)[39m[33m][39m[33m;[39m
+ [90m     | [39m    [1m[31m^[39m[22m
+ [90m 220 | [39m    background-size[33m:[39m 200% 100%[33m;[39m
+ [90m 221 | [39m  [33m}[39m
+<w> [webpack.cache.PackFileCacheStrategy] Skipped not serializable cache item 'Compilation/modules|D:\-CODINGS-\LifeLink\frontend\node_modules\next\dist\build\webpack\loaders\css-loader\src\index.js??ruleSet[1].rules[13].oneOf[12].use[2]!D:\-CODINGS-\LifeLink\frontend\node_modules\next\dist\build\webpack\loaders\postcss-loader\src\index.js??ruleSet[1].rules[13].oneOf[12].use[3]!D:\-CODINGS-\LifeLink\frontend\src\styles\globals.css': No serializer registered for PostCSSSyntaxError
+<w> while serializing webpack/lib/cache/PackFileCacheStrategy.PackContentItems -> webpack/lib/NormalModule -> webpack/lib/ModuleBuildError -> PostCSSSyntaxError
