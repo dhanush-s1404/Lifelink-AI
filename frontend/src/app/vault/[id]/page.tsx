@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -10,8 +10,15 @@ import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/Dialog";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Textarea } from "@/components/ui/Textarea";
+import { Badge } from "@/components/ui/Badge";
 import { DocumentSection } from "@/components/vault/DocumentSection";
+import { ItemTypeIcon } from "@/components/vault/ItemTypeIcon";
 import { useToast } from "@/lib/toast";
 import {
   createItem,
@@ -21,6 +28,7 @@ import {
   itemTypeLabel,
   listItems,
   type ItemType,
+  type VaultItem,
   type VaultItemDetail,
 } from "@/lib/vault";
 
@@ -39,7 +47,7 @@ function AddItemForm({ vaultId }: { vaultId: string }) {
     onSuccess: () => {
       toast.push("success", "Item added");
       setTitle("");
-      setContentJson("");
+      setContentJson('{\n  "note": ""\n}');
       queryClient.invalidateQueries({ queryKey: ["vault", vaultId, "items"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
     },
@@ -50,10 +58,13 @@ function AddItemForm({ vaultId }: { vaultId: string }) {
     <Card>
       <CardHeader>
         <CardTitle>Add an item</CardTitle>
+        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          Content is encrypted at rest
+        </p>
       </CardHeader>
       <CardBody>
         <form
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (!title.trim()) return;
@@ -73,49 +84,42 @@ function AddItemForm({ vaultId }: { vaultId: string }) {
             onChange={(e) => setTitle(e.target.value)}
             required
           />
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Type</span>
-            <select
-              value={itemType}
-              onChange={(e) => setItemType(e.target.value as ItemType)}
-              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-night-900 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
-            >
-              {ITEM_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              Content (JSON, encrypted at rest)
-            </span>
-            <textarea
-              value={contentJson}
-              onChange={(e) => setContentJson(e.target.value)}
-              rows={5}
-              spellCheck={false}
-              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-night-900 px-3 py-2 font-mono text-sm text-slate-900 dark:text-white shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
-            />
-          </label>
-          <div>
-            <Button type="submit" loading={mutation.isPending} disabled={!title.trim()}>
-              <Plus className="h-4 w-4" />
-              Add item
-            </Button>
-          </div>
+          <Select
+            label="Type"
+            value={itemType}
+            onChange={(e) => setItemType(e.target.value as ItemType)}
+          >
+            {ITEM_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </Select>
+          <Textarea
+            label="Content (JSON)"
+            hint={'Structured data stored encrypted, e.g. { "value": "ABC-123" }'}
+            value={contentJson}
+            onChange={(e) => setContentJson(e.target.value)}
+            rows={6}
+            spellCheck={false}
+            className="font-mono text-xs"
+          />
+          <Button type="submit" loading={mutation.isPending} disabled={!title.trim()}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add item
+          </Button>
         </form>
       </CardBody>
     </Card>
   );
 }
 
-function ItemRow({ vaultId, item }: { vaultId: string; item: { id: string; title: string; item_type: ItemType; version: number } }) {
+function ItemRow({ vaultId, item }: { vaultId: string; item: VaultItem }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [revealed, setRevealed] = useState(false);
   const [detail, setDetail] = useState<VaultItemDetail | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const load = useMutation({
     mutationFn: () => getItem(vaultId, item.id),
@@ -130,50 +134,79 @@ function ItemRow({ vaultId, item }: { vaultId: string; item: { id: string; title
     mutationFn: () => deleteItem(vaultId, item.id),
     onSuccess: () => {
       toast.push("success", "Item deleted");
+      setConfirmOpen(false);
       queryClient.invalidateQueries({ queryKey: ["vault", vaultId, "items"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
     },
-    onError: (err: Error) => toast.push("error", err.message),
+    onError: (err: Error) => {
+      toast.push("error", err.message);
+      setConfirmOpen(false);
+    },
   });
 
   return (
-    <li>
-      <div className="flex items-center justify-between gap-4 py-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{item.title}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {itemTypeLabel(item.item_type)} · version {item.version}
-          </p>
+    <li className="px-5">
+      <div className="flex items-center justify-between gap-4 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-100 dark:bg-night-800 dark:ring-slate-700">
+            <ItemTypeIcon itemType={item.item_type} className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{item.title}</p>
+            <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span>{itemTypeLabel(item.item_type)}</span>
+              <span className="text-slate-300 dark:text-slate-600">·</span>
+              <span>version {item.version}</span>
+            </div>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5">
           <Button
-            variant="ghost"
+            variant={revealed ? "ghost" : "outline"}
             size="sm"
             onClick={() => (revealed ? setRevealed(false) : load.mutate())}
             loading={load.isPending}
           >
-            {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {revealed ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
             {revealed ? "Hide" : "Reveal"}
           </Button>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+            onClick={() => setConfirmOpen(true)}
             aria-label={`Delete ${item.title}`}
-            className="rounded-lg p-2 text-slate-400 dark:text-slate-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
-            onClick={() => {
-              if (confirm(`Delete "${item.title}"?`)) remove.mutate();
-            }}
           >
-            <Trash2 className="h-4 w-4" />
-          </button>
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          </Button>
         </div>
       </div>
+
       {revealed && detail && (
-        <div className="mb-3 space-y-3">
-          <pre className="overflow-x-auto rounded-lg bg-slate-50 dark:bg-night-950 p-3 font-mono text-xs text-slate-800 dark:text-slate-100">
-            {JSON.stringify(detail.content, null, 2)}
-          </pre>
+        <div className="mb-4 animate-fade-in space-y-3">
+          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2 dark:border-slate-700 dark:bg-night-800">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" aria-hidden="true" />
+                Decrypted content
+              </span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">v{detail.version}</span>
+            </div>
+            <pre className="overflow-x-auto bg-white px-4 py-3 font-mono text-xs leading-relaxed text-slate-800 dark:bg-night-950 dark:text-slate-100">
+              {JSON.stringify(detail.content, null, 2)}
+            </pre>
+          </div>
           <DocumentSection vaultId={vaultId} itemId={item.id} />
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title={`Delete "${item.title}"?`}
+        loading={remove.isPending}
+        onConfirm={() => remove.mutate()}
+      />
     </li>
   );
 }
@@ -181,7 +214,6 @@ function ItemRow({ vaultId, item }: { vaultId: string; item: { id: string; title
 export default function VaultDetailPage() {
   const params = useParams<{ id: string }>();
   const vaultId = params.id;
-  const toast = useToast();
 
   const { data: items, isLoading, isError, refetch } = useQuery({
     queryKey: ["vault", vaultId, "items"],
@@ -192,29 +224,31 @@ export default function VaultDetailPage() {
   return (
     <RequireAuth>
       <AppShell>
-        <div className="mx-auto max-w-5xl p-8">
+        <div className="page-shell">
           <div className="flex items-center gap-3">
             <Link
               href="/vault"
-              className="rounded-lg p-2 text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-night-800"
+              className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-night-800 dark:hover:text-white"
               aria-label="Back to vaults"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Vault items</h1>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              <h1 className="page-heading">Vault items</h1>
+              <p className="page-subheading">
                 Contents are encrypted at rest. Reveal an item to view its decrypted content.
               </p>
             </div>
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+            <div className="space-y-4 lg:col-span-2">
               {isError && (
-                <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-4 text-sm text-red-800 dark:text-red-300">
-                  <p className="font-medium">Could not load items.</p>
-                  <button className="mt-2 text-red-700 underline" onClick={() => refetch()}>
+                <div className="alert alert-error">
+                  <div className="flex-1">
+                    <p className="font-medium">Could not load items.</p>
+                  </div>
+                  <button className="shrink-0 text-sm font-semibold underline" onClick={() => refetch()}>
                     Try again
                   </button>
                 </div>
@@ -223,13 +257,13 @@ export default function VaultDetailPage() {
               {isLoading ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-night-800" />
+                    <Skeleton key={i} className="h-16" />
                   ))}
                 </div>
               ) : items && items.length > 0 ? (
                 <Card>
                   <CardBody className="p-0">
-                    <ul className="divide-y divide-slate-100 dark:divide-slate-800 px-5">
+                    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                       {items.map((item) => (
                         <ItemRow key={item.id} vaultId={vaultId} item={item} />
                       ))}
@@ -237,15 +271,29 @@ export default function VaultDetailPage() {
                   </CardBody>
                 </Card>
               ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-10 text-center">
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    No items yet. Add your first sensitive record.
-                  </p>
-                </div>
+                <EmptyState
+                  icon={<Plus className="h-6 w-6" aria-hidden="true" />}
+                  title="No items yet"
+                  description="Add your first sensitive record — a policy number, medical detail, or account reference."
+                  action={
+                    <a href="#add-item">
+                      <Button>
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Add your first item
+                      </Button>
+                    </a>
+                  }
+                />
               )}
+
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:border-slate-700 dark:bg-night-900 dark:text-slate-400">
+                <ShieldCheck className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+                All items in this vault are encrypted at rest and only decryptable by users with
+                access.
+              </div>
             </div>
 
-            <div>
+            <div id="add-item">
               <AddItemForm vaultId={vaultId} />
             </div>
           </div>

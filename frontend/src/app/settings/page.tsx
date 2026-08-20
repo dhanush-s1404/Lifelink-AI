@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, User } from "lucide-react";
+import { KeyRound, ShieldCheck, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { RequireAuth } from "@/components/auth/RequireAuth";
@@ -38,13 +38,20 @@ function ProfileForm({ onSaved }: { onSaved: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
-          <CardTitle>Profile</CardTitle>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100 dark:bg-brand-900/40 dark:text-brand-300 dark:ring-brand-800/60">
+            <User className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <div>
+            <CardTitle>Profile</CardTitle>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              How your name appears across LifeLink
+            </p>
+          </div>
         </div>
       </CardHeader>
       <CardBody>
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={submit} className="flex flex-col gap-5">
           <Input
             label="Full name"
             placeholder="Jane Doe"
@@ -52,14 +59,20 @@ function ProfileForm({ onSaved }: { onSaved: () => void }) {
             onChange={(e) => setFullName(e.target.value)}
           />
           <div>
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{user?.email}</p>
+            <span className="field-label">Email</span>
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600 dark:border-slate-700 dark:bg-night-800 dark:text-slate-300">
+              <ShieldCheck className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+              {user?.email}
+            </div>
           </div>
-          <div>
-            <Button type="submit" loading={submitting} disabled={fullName.trim() === (user?.full_name ?? "")}>
-              Save changes
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            loading={submitting}
+            disabled={fullName.trim() === (user?.full_name ?? "")}
+            className="w-full sm:w-auto"
+          >
+            Save changes
+          </Button>
         </form>
       </CardBody>
     </Card>
@@ -106,9 +119,16 @@ function PasswordForm() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
-          <CardTitle>Change password</CardTitle>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100 dark:bg-brand-900/40 dark:text-brand-300 dark:ring-brand-800/60">
+            <KeyRound className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <div>
+            <CardTitle>Change password</CardTitle>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              Use at least 8 characters with a mix of letters, numbers, and symbols
+            </p>
+          </div>
         </div>
       </CardHeader>
       <CardBody>
@@ -137,11 +157,14 @@ function PasswordForm() {
             onChange={(e) => setConfirm(e.target.value)}
             required
           />
-          <div>
-            <Button type="submit" loading={submitting} disabled={!current || !next || !confirm}>
-              Update password
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            loading={submitting}
+            disabled={!current || !next || !confirm}
+            className="w-full sm:w-auto"
+          >
+            Update password
+          </Button>
         </form>
       </CardBody>
     </Card>
@@ -156,7 +179,7 @@ export default function SettingsPage() {
         <div className="page-shell">
           <h1 className="page-heading">Settings</h1>
           <p className="page-subheading">Manage your profile and account security.</p>
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
             <ProfileForm onSaved={() => setVersion((v) => v + 1)} />
             <PasswordForm />
           </div>

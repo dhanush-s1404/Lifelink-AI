@@ -47,13 +47,15 @@ export function DocumentSection({ vaultId, itemId }: { vaultId: string; itemId: 
   });
 
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-night-900 p-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-night-900">
       <div className="flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
-          <Paperclip className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+        <p className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-400 shadow-sm dark:bg-night-800 dark:text-slate-500">
+            <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+          </span>
           Documents
           {documents && documents.length > 0 && (
-            <span className="rounded-full bg-slate-100 dark:bg-night-800 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">
               {documents.length}
             </span>
           )}
@@ -74,19 +76,21 @@ export function DocumentSection({ vaultId, itemId }: { vaultId: string; itemId: 
           onClick={() => fileRef.current?.click()}
           loading={upload.isPending}
         >
-          <Upload className="h-4 w-4" />
+          <Upload className="h-4 w-4" aria-hidden="true" />
           Upload
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="mt-2 h-8 animate-pulse rounded bg-slate-100 dark:bg-night-800" />
+        <div className="mt-3 h-9 animate-pulse rounded-lg bg-slate-200/60 dark:bg-slate-700/40" />
       ) : documents && documents.length > 0 ? (
-        <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="mt-3 divide-y divide-slate-200/70 dark:divide-slate-700/60">
           {documents.map((doc) => (
-            <li key={doc.id} className="flex items-center justify-between gap-3 py-2">
+            <li key={doc.id} className="flex items-center justify-between gap-3 py-2.5">
               <div className="flex min-w-0 items-center gap-2.5">
-                <FileText className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" />
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">
+                  <FileText className="h-4 w-4" aria-hidden="true" />
+                </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm text-slate-800 dark:text-slate-100">{doc.original_filename}</p>
                   <p className="text-xs text-slate-400 dark:text-slate-500">
@@ -97,14 +101,14 @@ export function DocumentSection({ vaultId, itemId }: { vaultId: string; itemId: 
               <div className="flex shrink-0 items-center gap-1">
                 <button
                   aria-label={`Download ${doc.original_filename}`}
-                  className="rounded-lg p-2 text-slate-400 dark:text-slate-500 transition hover:bg-slate-100 dark:hover:bg-night-800 hover:text-slate-700"
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-white hover:text-brand-600 hover:shadow-sm dark:text-slate-500 dark:hover:bg-night-800 dark:hover:text-brand-400"
                   onClick={() => downloadDocument(vaultId, itemId, doc.id)}
                 >
                   <Download className="h-4 w-4" />
                 </button>
                 <button
                   aria-label={`Delete ${doc.original_filename}`}
-                  className="rounded-lg p-2 text-slate-400 dark:text-slate-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                   onClick={() => {
                     if (confirm(`Delete "${doc.original_filename}"?`)) remove.mutate(doc.id);
                   }}
@@ -116,7 +120,7 @@ export function DocumentSection({ vaultId, itemId }: { vaultId: string; itemId: 
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+        <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
           No documents yet. Upload files such as scans or PDFs.
         </p>
       )}
