@@ -20,18 +20,17 @@ export class ApiError extends Error {
   }
 }
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+const ACCESS_TOKEN_KEY = "lifelink_access_token";
+const REFRESH_TOKEN_KEY = "lifelink_refresh_token";
 
 class TokenManager {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
-  private readonly refreshStorageKey = "lifelink_refresh_token";
-  private readonly accessStorageKey = "lifelink_access_token";
 
   constructor() {
     if (typeof window !== "undefined") {
-      this.accessToken = window.sessionStorage.getItem(this.accessStorageKey);
-      this.refreshToken = window.localStorage.getItem(this.refreshStorageKey);
+      this.accessToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+      this.refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY);
     }
   }
 
@@ -46,23 +45,29 @@ class TokenManager {
   setTokens(access: string, refresh: string): void {
     this.accessToken = access;
     this.refreshToken = refresh;
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem(this.accessStorageKey, access);
-      window.localStorage.setItem(this.refreshStorageKey, refresh);
-    }
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, access);
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, refresh);
   }
 
   clear(): void {
     this.accessToken = null;
     this.refreshToken = null;
-    if (typeof window !== "undefined") {
-      window.sessionStorage.removeItem(this.accessStorageKey);
-      window.localStorage.removeItem(this.refreshStorageKey);
-    }
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  }
+
+  static clearAll(): void {
+    if (typeof window === "undefined") return;
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
   }
 }
 
 export const tokenManager = new TokenManager();
+
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+
+let refreshPromise: Promise<string | null> | null = null;
 
 async function parseError(res: Response): Promise<ApiError> {
   let code = `HTTP_${res.status}`;
@@ -82,8 +87,6 @@ async function parseError(res: Response): Promise<ApiError> {
 
   return new ApiError(res.status, code, message, requestId);
 }
-
-let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
   const refresh = tokenManager.getRefresh();

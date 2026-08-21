@@ -15,6 +15,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+import redis
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -85,18 +86,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimiter:
-    """Simple in-memory rate limiter for API endpoints.
+    """Distributed rate limiter using Redis for backend consistency.
 
-    Tracks requests per client by IP address (or user ID when available).
-    Configurable window and limit.
+    Tracks requests per client by IP address or user ID.
+    Uses Redis INCR with EXpiry for atomic distributed counting.
+    Falls back to in-memory if Redis is unavailable.
 
     Usage:
         limiter = RateLimiter(calls=10, period=60)  # 10 calls per minute
-        if not limiter.allow(client_id):
+        if not limiter.allow(request):
             raise HTTPException(status_code=429)
     """
 
-    def __init__(self, calls: int, period: int) -> None:
+    def __init__(self, calls: int, period: int, redis_client: Any | None = None) -> None:
         """Initialize rate limiter.
 
         Parameters
@@ -105,12 +107,15 @@ class RateLimiter:
             Maximum number of allowed calls.
         period:
             Time window in seconds.
+        redis_client:
+            Optional Redis client. If not provided, creates a default connection.
         """
         self.calls = calls
         self.period = period
-        self._records: dict[str, list[float]] = {}
+        self._redis = redis_client or redis.asyncio.Redis(host="redis", port=6379, db=0)
+        self._memory: dict[str, list[float]] = {}
 
-    def _client_key(self, request: Any) -> str:
+    async def _client_key(self, request: Any) -> str:
         """Generate a unique key for the client."""
         # Try to get user ID from request state, fall back to IP
         if hasattr(request, "state") and hasattr(request.state, "user_id"):
@@ -120,46 +125,56 @@ class RateLimiter:
             return f"ip:{request.client.host}"
         return "unknown"
 
-    def allow(self, request: Any) -> bool:
+    async def allow(self, request: Any) -> bool:
         """Check if the request is allowed within the rate limit.
 
-        Parameters
-        ----------
-        request:
-            The FastAPI request object.
+        Uses Redis INCR with EX for atomic distributed counting and TTL auto-expiry.
+        Falls back to in-memory tracking if Redis is unavailable.
 
         Returns
         -------
         bool
             True if the request is allowed, False if rate limited.
         """
-        key = self._client_key(request)
+        key = await self._client_key(request)
         now = time.time()
+        redis_key = f"rate_limit:{key}"
 
-        # Initialize records for this key if not present
-        if key not in self._records:
-            self._records[key] = []
+        try:
+            # Use INCR with EX (auto-expire after period seconds)
+            count = await self._redis.incr(redis_key)
+            if count == 1:
+                # First request, set expiry
+                await self._redis.expire(redis_key, self.period)
+            # Also track in memory as backup
+            self._memory[key] = self._memory.get(key, []) + [now]
+        except Exception:
+            # Redis unavailable - fall back to in-memory
+            if key not in self._memory:
+                self._memory[key] = []
+            self._memory[key] = [t for t in self._memory[key] if now - t < self.period]
+            if len(self._memory[key]) >= self.calls:
+                return False
+            self._memory[key].append(now)
+            return True
 
-        # Remove timestamps outside the window
-        self._records[key] = [t for t in self._records[key] if now - t < self.period]
-
-        # Check if under the limit
-        if len(self._records[key]) >= self.calls:
+        # Check limit
+        if count >= self.calls:
             return False
 
-        # Record this request
-        self._records[key].append(now)
+        # Record in memory as backup
+        self._memory[key] = self._memory.get(key, []) + [now]
         return True
 
     def reset(self, key: str) -> None:
         """Reset the rate limit counter for a specific key."""
-        if key in self._records:
-            del self._records[key]
-
-
-# ------------------------------------------------------------------
-# Token validation helper
-# ---------------------------------------------------------------
+        try:
+            redis_key = f"rate_limit:{key}"
+            self._redis.delete(redis_key)
+        except Exception:
+            pass
+        if key in self._memory:
+            del self._memory[key]
 
 
 from fastapi import Request

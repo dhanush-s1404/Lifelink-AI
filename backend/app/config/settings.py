@@ -3,23 +3,29 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from functools import lru_cache
-from typing import cast
-
-from functools import lru_cache
+from typing import cast, List
 
 from pydantic import Field, model_validator
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
+def _parse_cors_origins(v: str) -> List[str]:
+    """Parse comma-separated CORS origins from env string."""
+    if not v:
+        return ["http://localhost:3000"]
+    return [origin.strip() for origin in v.split(",") if origin.strip()]
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="", secrets_strict=False)
 
     # General
     environment: str = "development"
     log_level: str = "INFO"
     app_name: str = "LifeLink AI"
     api_v1_prefix: str = "/api/v1"
-    backend_cors_origins: list[str] = ["http://localhost:3000"]
+    backend_cors_origins: List[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
     # Database
     postgres_user: str = "lifelink"
@@ -38,7 +44,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
     # Vault
@@ -48,7 +54,7 @@ class Settings(BaseSettings):
     minio_endpoint: str = "http://localhost:9000"
     minio_access_key: str = ""
     minio_secret_key: str = ""
-    minio_root_user: str = ""
+    minio_root_user: str = "minioadmin"
     minio_root_password: str = ""
     minio_bucket: str = "lifelink"
     minio_secure: bool = False
@@ -59,7 +65,7 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    from_email: str = ""
+    from_email: str = "noreply@lifelink.local"
 
     # Frontend
     frontend_url: str = "http://localhost:3000"
@@ -80,9 +86,16 @@ class Settings(BaseSettings):
     # Session
     session_timeout_minutes: int = 30
 
-    # CORS
-    cors_methods: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    cors_allow_credentials: bool = True
+# CORS origins: comma-separated list from env var (e.g. "http://localhost:3000,https://app.example.com")
+# Parsed by _parse_cors_origins(). Default is localhost for development.
+# NOTE: allow_credentials=True requires explicit origins (cannot use "*")
+cors_origins: str = "http://localhost:3000"
+
+@model_validator(mode="after")
+def _validate_cors_origins(self) -> "Settings":
+    """Parse CORS origins from comma-separated env string."""
+    self.backend_cors_origins = _parse_cors_origins(self.cors_origins)
+    return self
 
     @model_validator(mode="after")
     def _backfill_aliases(self) -> "Settings":
@@ -93,6 +106,7 @@ class Settings(BaseSettings):
         if not self.opentelemetry_endpoint:
             self.opentelemetry_endpoint = self.otel_endpoint
         return self
+
 
 settings = Settings()
 

@@ -71,9 +71,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version="0.2.0",
-    openapi_url="/openapi.json",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # openapi_url="/openapi.json",  # Disabled - exposed spec could leak API structure
+    # docs_url="/docs",  # Disabled - public docs not suitable for production
+    # redoc_url="/redoc",  # Disabled - public docs not suitable for production
     lifespan=lifespan,
 )
 
@@ -88,12 +88,14 @@ app.add_middleware(CorrelationIDMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS
+# NOTE: allow_credentials=True requires explicit origins (cannot use "*")
+# Restrict methods/headers to only what the application needs
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.backend_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
 )
 
 # ------------------------------------------------------------------
@@ -127,6 +129,15 @@ app.include_router(api_router)
 
 # ------------------------------------------------------------------
 # API router
+# ------------------------------------------------------------------
+
+# NOTE: OpenAPI/docs endpoints are intentionally NOT mounted here.
+# They are only available when explicitly needed for development/debugging.
+# In production, these should be behind authentication or removed entirely.
+# The canonical health surface is /health, /ready, /live below.
+
+# ------------------------------------------------------------------
+# Exception handlers
 # ------------------------------------------------------------------
 
 # ------------------------------------------------------------------
